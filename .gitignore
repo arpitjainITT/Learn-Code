@@ -1,0 +1,22 @@
+# Ignore everything
+*
+
+# Allow directories and files
+!*/
+
+# Allow specific file types
+!*.cpp
+!*.h
+!*.json
+!*.gitignore
+
+# Ignore specific build-related or intermediate files
+*.exe
+*.o
+*.out
+*.s
+*.so
+*.a
+
+# Ignore specific folders
+Practice/
