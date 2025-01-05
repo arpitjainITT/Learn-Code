@@ -6,7 +6,16 @@
 using json = nlohmann::json;
 
 std::string getCountryName(const std::string& countryCode, const json& countryData) {
-    return countryData.value(countryCode, "Invalid country code.");
+    if (countryData.contains(countryCode)) {
+        const auto& adjacentCountries = countryData[countryCode];
+        std::string result;
+        for (const auto& country : adjacentCountries) {
+            if (!result.empty()) result += ", ";
+            result += country.get<std::string>();
+        }
+        return result;
+    }
+    return "No data available for this country code.";
 }
 
 int main() {
@@ -29,8 +38,8 @@ int main() {
         c = toupper(c);
     }
 
-    std::string countryName = getCountryName(countryCode, countryData);
-    std::cout << "Country: " << countryName << std::endl;
+    std::string adjacentCountriesName = getCountryName(countryCode, countryData);
+    std::cout << "Adjacent countries of " << countryCode << " : " << adjacentCountriesName << std::endl;
 
     return 0;
 }
