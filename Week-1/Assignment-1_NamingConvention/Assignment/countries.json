@@ -9,7 +9,7 @@
     "IN": ["Bangladesh", "Sri Lanka", "China", "Bhutan", "Myanmar", "Pakistan", "Nepal"],
     "PK": ["India", "Afghanistan", "Iran", "China"],
     "CN": ["India", "Nepal", "Bhutan", "Pakistan", "Russia", "Mongolia", "Kazakhstan"],
-    "AX": "Finland , Sweden",
+    "AX": ["Finland , Sweden"],
     "BR": ["Argentina", "Bolivia", "Colombia", "Guyana", "Paraguay", "Peru", "Suriname", "Uruguay", "Venezuela"],
     "CA": ["United States"],
     "FR": ["Belgium", "Germany", "Italy", "Luxembourg", "Monaco", "Spain", "Switzerland"],
