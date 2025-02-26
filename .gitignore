@@ -6,7 +6,11 @@
 
 # Allow specific file types
 !*.cpp
+!*.cs
+!*.py
+!*.php
 !*.h
+!*.hpp
 !*.json
 !*.gitignore
 !*.xlsx
