@@ -2,9 +2,9 @@
 #include <iostream>
 
 nlohmann::json JsonParser::parseJsonResponse(const std::string& jsonResponse) {
-    const std::string prefix = "var tumblr_api_read = ";
+
     if (jsonResponse.compare(0, prefix.size(), prefix) != 0) {
-        throw std::runtime_error("Unexpected response format.");
+        throw std::runtime_error(cUnexpectedResponseFormat);
     }
 
     //Remove Prefix
@@ -19,32 +19,32 @@ nlohmann::json JsonParser::parseJsonResponse(const std::string& jsonResponse) {
 }
 
 void JsonParser::displayBlogInfo(const nlohmann::json& tumblrData) {
-    if (tumblrData.contains("tumblelog")) {
-        const auto& tumblelog = tumblrData["tumblelog"];
-        std::cout << "Title: " << tumblelog.value("title", "N/A") << std::endl;
-        std::cout << "Name: " << tumblelog.value("name", "N/A") << std::endl;
-        std::cout << "Description: " << tumblelog.value("description", "N/A") << std::endl;
+    if (tumblrData.contains(cTumbleLog)) {
+        const auto& tumblelog = tumblrData[cTumbleLog];
+        std::cout << "Title: " << tumblelog.value(cTitle, cNotApplicable) << std::endl;
+        std::cout << "Name: " << tumblelog.value(cName, cNotApplicable) << std::endl;
+        std::cout << "Description: " << tumblelog.value(cDescription, cNotApplicable) << std::endl;
     } else {
-        std::cerr << "Blog information not found." << std::endl;
+        std::cerr << cBlogInformationNotFound << std::endl;
     }
 }
 
 void JsonParser::displayPosts(const nlohmann::json& tumblrData, int start) {
-    if (tumblrData.contains("posts")) {
-        const auto& posts = tumblrData["posts"];
+    if (tumblrData.contains(cPosts)) {
+        const auto& posts = tumblrData[cPosts];
         int postNumber = start;
         for (const auto& post : posts) {
             std::cout << postNumber << ". ";
-            if (post.contains("photo-url-1280")) {
-                std::cout << post["photo-url-1280"].get<std::string>() << std::endl;
-            } else if (post.contains("photo-url-500")) {
-                std::cout << post["photo-url-500"].get<std::string>() << std::endl;
+            if (post.contains(cPhotoUrl1280)) {
+                std::cout << post[cPhotoUrl1280].get<std::string>() << std::endl;
+            } else if (post.contains(cPhotoUrl500)) {
+                std::cout << post[cPhotoUrl500].get<std::string>() << std::endl;
             } else {
-                std::cout << "No image available." << std::endl;
+                std::cout << cNoImageAvailable << std::endl;
             }
             ++postNumber;
         }
     } else {
-        std::cerr << "No posts found in the specified range." << std::endl;
+        std::cerr << cNoPostsFound << std::endl;
     }
 }
