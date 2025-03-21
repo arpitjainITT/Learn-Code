@@ -1,7 +1,7 @@
 #ifndef TUMBLRCLIENT_HPP
 #define TUMBLRCLIENT_HPP
 
-#include <string>
+#include "constants.hpp"
 
 class TumblrClient {
 public:

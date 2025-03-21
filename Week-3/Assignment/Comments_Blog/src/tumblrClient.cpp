@@ -4,9 +4,10 @@
 
 TumblrClient::TumblrClient(const std::string& blogName) : blogName(blogName) {}
 
-std::string TumblrClient::constructApiUrl(int start, int numPosts) const {
-    return "https://" + blogName + ".tumblr.com/api/read/json?type=photo&start=" +
-           std::to_string(start) + "&num=" + std::to_string(numPosts);
+std::string TumblrClient::constructApiUrl(int start, int totalPosts) const {
+    return cWebUrlProtocol + blogName + cWebUrlDomainName + cWebUrlResourcePath + 
+           cWebUrlTypeQueryParameter + cWebUrlStartingIndexQueryParameter +
+           std::to_string(start) + cWebUrlTotalPostsQueryParameter + std::to_string(totalPosts);
 }
 
 size_t TumblrClient::writeCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
@@ -19,12 +20,12 @@ size_t TumblrClient::writeCallback(void* contents, size_t size, size_t nmemb, st
     return newLength;
 }
 
-std::string TumblrClient::fetchPosts(int start, int numPosts) const {
-    std::string apiUrl = constructApiUrl(start, numPosts);
+std::string TumblrClient::fetchPosts(int start, int totalPosts) const {
+    std::string apiUrl = constructApiUrl(start, totalPosts);
 
     CURL* curl = curl_easy_init();
     if (!curl) {
-        throw std::runtime_error("Failed to initialize cURL.");
+        throw std::runtime_error(cFailedToIntializeCURL);
     }
 
     std::string responseString;
@@ -36,7 +37,7 @@ std::string TumblrClient::fetchPosts(int start, int numPosts) const {
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
         curl_easy_cleanup(curl);
-        throw std::runtime_error("cURL request failed: " + std::string(curl_easy_strerror(res)));
+        throw std::runtime_error(cCURLRequestFailed + std::string(curl_easy_strerror(res)));
     }
 
     curl_easy_cleanup(curl);
