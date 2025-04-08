@@ -17,11 +17,13 @@ int main() {
         TumblrClient client(blogName);
         std::string response = client.fetchPosts(start - 1, totalPosts);
 
-        nlohmann::json tumblrData = JsonParser::parseJsonResponse(response);
+        IJsonParser* parser = new JsonParser();
+        nlohmann::json tumblrData = parser->parseJsonResponse(response);
 
         JsonParser::displayBlogInfo(tumblrData);
         JsonParser::displayPosts(tumblrData, start);
 
+        delete parser;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

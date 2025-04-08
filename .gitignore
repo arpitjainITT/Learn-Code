@@ -23,5 +23,9 @@
 *.so
 *.a
 
+#Ignore specific files
+Week-1/Assignment-1_NamingConvention/Assignment/json.hpp
+
 # Ignore specific folders
 Practice/
+Live Assignment/

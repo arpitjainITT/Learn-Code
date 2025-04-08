@@ -4,24 +4,25 @@
 
 TumblrClient::TumblrClient(const std::string& blogName) : blogName(blogName) {}
 
-std::string TumblrClient::constructApiUrl(int start, int totalPosts) const {
+std::string TumblrClient::constructAPIUrl(int start, int totalPosts) const {
     return cWebUrlProtocol + blogName + cWebUrlDomainName + cWebUrlResourcePath + 
            cWebUrlTypeQueryParameter + cWebUrlStartingIndexQueryParameter +
            std::to_string(start) + cWebUrlTotalPostsQueryParameter + std::to_string(totalPosts);
 }
 
-size_t TumblrClient::writeCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
-    size_t newLength = size * nmemb;
+size_t TumblrClient::writeCallback(void* contents, size_t elementSize, size_t elementCount, std::string* outputBuffer) {
+    size_t totalSize = elementSize * elementCount;
     try {
-        s->append(static_cast<char*>(contents), newLength);
+        outputBuffer->append(static_cast<char*>(contents), totalSize);
     } catch (const std::bad_alloc&) {
         return 0;
     }
-    return newLength;
+    return totalSize;
 }
 
+
 std::string TumblrClient::fetchPosts(int start, int totalPosts) const {
-    std::string apiUrl = constructApiUrl(start, totalPosts);
+    std::string apiURL = constructApiUrl(start, totalPosts);
 
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -29,7 +30,7 @@ std::string TumblrClient::fetchPosts(int start, int totalPosts) const {
     }
 
     std::string responseString;
-    curl_easy_setopt(curl, CURLOPT_URL, apiUrl.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, apiURL.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseString);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); 

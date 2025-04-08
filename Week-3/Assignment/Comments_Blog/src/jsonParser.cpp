@@ -3,12 +3,12 @@
 
 nlohmann::json JsonParser::parseJsonResponse(const std::string& jsonResponse) {
 
-    if (jsonResponse.compare(0, prefix.size(), prefix) != 0) {
+    if (jsonResponse.compare(0, cPrefix.size(), cPrefix) != 0) {
         throw std::runtime_error(cUnexpectedResponseFormat);
     }
 
     //Remove Prefix
-    std::string jsonData = jsonResponse.substr(prefix.size());
+    std::string jsonData = jsonResponse.substr(cPrefix.size());
     
     //Remove Trailing Whitespace and Semicolon
     while (!jsonData.empty() && (std::isspace(jsonData.back()) || jsonData.back() == ';')) {

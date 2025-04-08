@@ -5,7 +5,7 @@
 
 //Using c as prefix for constants to indicate that they are constant strings
 
-const std::string prefix = "var tumblr_api_read = ";
+const std::string cPrefix = "var tumblr_api_read = ";
 const std::string cPhotoUrl1280 = "photo-url-1280";
 const std::string cPhotoUrl500 = "photo-url-500";
 const std::string cTumbleLog = "tumblelog";

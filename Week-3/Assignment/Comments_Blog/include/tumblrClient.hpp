@@ -10,7 +10,7 @@ public:
 
 private:
     std::string blogName;
-    std::string constructApiUrl(int start, int numPosts) const;
+    std::string constructAPIUrl(int start, int numPosts) const;
     static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* s);
 };
 
