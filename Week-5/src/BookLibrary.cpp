@@ -1,4 +1,5 @@
 #include "BookLibrary.h"
+#include "Exceptions.h"
 
 bool BookService::addBook(const Book& book) {
     books.push_back(book);
@@ -11,7 +12,7 @@ Book* BookService::getBookById(int id) {
             return &book;
         }
     }
-    return nullptr;
+    throw BookNotFoundException("Book not found with id: " + std::to_string(id));
 }
 
 std::vector<Book> BookService::getAllBooks() const {
@@ -25,7 +26,7 @@ bool BookService::updateBook(int id, const Book& updatedBook) {
             return true;
         }
     }
-    return false;
+    throw BookNotFoundException("Cannot update. Book not found with id: " + std::to_string(id));
 }
 
 bool BookService::deleteBook(int id) {
@@ -35,5 +36,5 @@ bool BookService::deleteBook(int id) {
             return true;
         }
     }
-    return false;
+    throw BookNotFoundException("Cannot delete. Book not found with id: " + std::to_string(id));
 }

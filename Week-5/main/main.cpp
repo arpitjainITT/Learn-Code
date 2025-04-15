@@ -1,4 +1,5 @@
 #include "BookLibrary.h"
+#include "Exceptions.h"
 #include "../crow_all.h"
 
 crow::json::wvalue bookToJson(const Book& book) {
@@ -27,39 +28,54 @@ int main() {
     });
 
     CROW_ROUTE(app, "/books/<int>").methods(crow::HTTPMethod::GET)([&bookService](int id) {
-        Book* book = bookService.getBookById(id);
-        if (book != nullptr) {
+        try {
+            Book* book = bookService.getBookById(id);
             return crow::response{bookToJson(*book)};
+        } catch (const BookNotFoundException& ex) {
+            return crow::response(404, ex.what());
+        } catch (const std::exception& ex) {
+            return crow::response(500, ex.what());
         }
-        return crow::response(404, "Book not found");
     });
 
 
     CROW_ROUTE(app, "/books").methods(crow::HTTPMethod::POST)([&bookService](const crow::request& req) {
-        auto body = crow::json::load(req.body);
-        if (!body) return crow::response(400, "Invalid JSON");
+        try {
+            auto body = crow::json::load(req.body);
+            if (!body) return crow::response(400, "Invalid JSON");
 
-        Book newBook(body["id"].i(), body["title"].s(), body["author"].s());
-        bookService.addBook(newBook);
-        return crow::response{bookToJson(newBook)};
+            Book newBook(body["id"].i(), body["title"].s(), body["author"].s());
+            bookService.addBook(newBook);
+            return crow::response{bookToJson(newBook)};
+        } catch (const std::exception& ex) {
+            return crow::response(500, ex.what());
+        }
     });
 
     CROW_ROUTE(app, "/books/<int>").methods(crow::HTTPMethod::PUT)([&bookService](const crow::request& req, int id) {
-        auto body = crow::json::load(req.body);
-        if (!body) return crow::response(400, "Invalid JSON");
+        try {
+            auto body = crow::json::load(req.body);
+            if (!body) return crow::response(400, "Invalid JSON");
 
-        Book updatedBook(id, body["title"].s(), body["author"].s());
-        if (bookService.updateBook(id, updatedBook)) {
+            Book updatedBook(id, body["title"].s(), body["author"].s());
+            bookService.updateBook(id, updatedBook);
             return crow::response{bookToJson(updatedBook)};
+        } catch (const BookNotFoundException& ex) {
+            return crow::response(404, ex.what());
+        } catch (const std::exception& ex) {
+            return crow::response(500, ex.what());
         }
-        return crow::response(404, "Book not found");
     });
 
     CROW_ROUTE(app, "/books/<int>").methods(crow::HTTPMethod::DELETE)([&bookService](int id) {
-        if (bookService.deleteBook(id)) {
-            return crow::response(200);
+        try {
+            bookService.deleteBook(id);
+            return crow::response(200, "Book deleted");
+        } catch (const BookNotFoundException& ex) {
+            return crow::response(404, ex.what());
+        } catch (const std::exception& ex) {
+            return crow::response(500, ex.what());
         }
-        return crow::response(404, "Book not found");
     });
 
     app.port(18080).multithreaded().run();
