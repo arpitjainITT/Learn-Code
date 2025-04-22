@@ -8,7 +8,6 @@
 !*.cpp
 !*.h
 !*.json
-!*.gitignore
 !*.xlsx
 
 # Ignore specific build-related or intermediate files
@@ -21,3 +20,4 @@
 
 # Ignore specific folders
 Practice/
+build/
