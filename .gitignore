@@ -12,7 +12,6 @@
 !*.h
 !*.hpp
 !*.json
-!*.gitignore
 !*.xlsx
 !*.png
 
@@ -27,4 +26,4 @@
 
 # Ignore specific folders
 Practice/
-Live Assignment/
+build/
