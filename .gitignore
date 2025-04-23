@@ -23,6 +23,8 @@
 *.s
 *.so
 *.a
+*crow_all.h
 
 # Ignore specific folders
 Practice/
+Live Assignment/
