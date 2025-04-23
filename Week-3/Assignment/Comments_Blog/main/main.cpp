@@ -1,0 +1,31 @@
+#include "TumblrClient.hpp"
+#include "UserInputHandler.hpp"
+#include "JsonParser.hpp"
+#include <iostream>
+#include <stdexcept>
+
+int main() {
+    try {
+
+        std::string blogName;
+        int start, end;
+        
+        UserInputHandler::getUserInput(blogName, start, end);
+
+        int totalPosts = end - start + 1;
+
+        TumblrClient client(blogName);
+        std::string response = client.fetchPosts(start - 1, totalPosts);
+
+        nlohmann::json tumblrData = JsonParser::parseJsonResponse(response);
+
+        JsonParser::displayBlogInfo(tumblrData);
+        JsonParser::displayPosts(tumblrData, start);
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
