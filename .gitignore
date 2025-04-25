@@ -23,7 +23,9 @@
 *.so
 *.a
 *crow_all.h
+json.hpp
 
 # Ignore specific folders
 Practice/
 build/
+Live Assignment/
