@@ -15,9 +15,9 @@ bool AuthService::login(User& user) {
 
     if (response.find("success") != std::string::npos) {
         user.setEmail(email);
-        user.setUsername("Suresh"); // ideally parsed from JSON
+        user.setUsername("USERNAME"); 
         user.setRole(response.find("admin") != std::string::npos ? "admin" : "user");
-        user.setToken("mocked_token_123"); // replace with parsed value in real
+        user.setToken("mocked_token_123"); // will get replace with parsed value in real
 
         return true;
     }

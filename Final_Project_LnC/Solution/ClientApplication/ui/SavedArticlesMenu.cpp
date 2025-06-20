@@ -7,7 +7,7 @@
 SavedArticlesMenu::SavedArticlesMenu(const User& u) : user(u) {}
 
 void SavedArticlesMenu::show() {
-    ConsoleUtils::clear();
+    // ConsoleUtils::clear();
     std::cout << "=== Saved Articles ===\n";
 
     auto articles = SavedArticleService::getSavedArticles(user);

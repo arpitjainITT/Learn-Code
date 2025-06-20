@@ -8,7 +8,7 @@ AdminMenu::AdminMenu(const User& u) : user(u) {}
 void AdminMenu::show() {
     int choice;
     do {
-        ConsoleUtils::clear();
+        // ConsoleUtils::clear();
         std::cout << "=== Admin Menu ===\n";
         std::cout << "1. View List of External Servers and Status\n";
         std::cout << "2. View External Server Details\n";

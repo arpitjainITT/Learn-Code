@@ -6,6 +6,6 @@ class HeadlinesMenu {
 private:
     User user;
 public:
-    HeadlinesMenu(const User& u);
+    HeadlinesMenu(const User& user);
     void show();
 };

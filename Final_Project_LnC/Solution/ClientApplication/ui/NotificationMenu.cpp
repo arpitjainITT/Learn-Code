@@ -8,7 +8,7 @@ NotificationMenu::NotificationMenu(const User& u) : user(u) {}
 void NotificationMenu::show() {
     int choice;
     do {
-        ConsoleUtils::clear();
+        // ConsoleUtils::clear();
         std::cout << "=== Notifications ===\n";
         std::cout << "1. View Notifications\n";
         std::cout << "2. Configure Notifications\n";

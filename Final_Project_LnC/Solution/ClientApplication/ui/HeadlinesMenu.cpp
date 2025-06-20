@@ -4,57 +4,55 @@
 #include "../utils/ConsoleUtils.h"
 #include <iostream>
 
-HeadlinesMenu::HeadlinesMenu(const User& u) : user(u) {}
-
+HeadlinesMenu::HeadlinesMenu(const User& user) : user(user) {}
 void HeadlinesMenu::show() {
     int mainChoice;
     do {
-        ConsoleUtils::clear();
         std::cout << "=== Headlines Menu ===\n";
-        std::cout << "1. Today\n";
-        std::cout << "2. Date Range\n";
-        std::cout << "3. Back\n";
+        std::cout << "1. Today\n2. Date Range\n3. Back\n";
         std::cout << "Enter your choice: ";
         std::cin >> mainChoice;
 
         switch (mainChoice) {
             case 1: {
-                int catChoice;
+                int categoryChoice;
                 do {
-                    ConsoleUtils::clear();
                     std::cout << "=== Today's Headlines ===\n";
-                    std::cout << "1. All\n2. Business\n3. Entertainment\n4. Sports\n5. Technology\n6. Back\n";
+                    std::cout << "1. All\n2. Business\n3. Entertainment\n4. Sports\n5. Technology\n6. Politics\n7. Back\n";
                     std::cout << "Select category: ";
-                    std::cin >> catChoice;
+                    std::cin >> categoryChoice;
 
                     std::string category;
-                    switch (catChoice) {
+                    switch (categoryChoice) {
                         case 1: category = "all"; break;
-                        case 2: category = "business"; break;
-                        case 3: category = "entertainment"; break;
-                        case 4: category = "sports"; break;
-                        case 5: category = "technology"; break;
-                        case 6: continue;
+                        case 2: category = "Business"; break;
+                        case 3: category = "Entertainment"; break;
+                        case 4: category = "Sports"; break;
+                        case 5: category = "Technology"; break;
+                        case 6: category = "Politics"; break;
+                        case 7: break;
                         default: std::cout << "Invalid category.\n"; continue;
                     }
 
-                    auto articles = NewsService::getTodayHeadlines(category);
-                    NewsService::printArticlesTable(articles);
-
-                    int action;
-                    std::cout << "\n1. Save Article\n2. Back\n3. Logout\nChoice: ";
-                    std::cin >> action;
-
-                    if (action == 1) {
-                        std::string articleId;
-                        std::cout << "Enter Article ID to save: ";
-                        std::cin >> articleId;
-                        SavedArticleService::saveArticle(user, articleId);
-                    } else if (action == 3) {
-                        exit(0);
+                    if (categoryChoice != 7) {
+                        auto headlines = NewsService::getTodayHeadlines(category);
+                        NewsService::printArticlesTable(headlines);
+                    
+                        int userAction;
+                        std::cout << "\n1. Save Article\n2. Back\n3. Logout\nChoice: ";
+                        std::cin >> userAction;
+                    
+                        if (userAction == 1) {
+                            std::string articleId;
+                            std::cout << "Enter Article ID to save: ";
+                            std::cin >> articleId;
+                            SavedArticleService::saveArticle(user, articleId);
+                        } else if (userAction == 3) {
+                            exit(0);
+                        }
                     }
 
-                } while (catChoice != 6);
+                } while (categoryChoice != 7);
                 break;
             }
             case 2:

@@ -7,7 +7,7 @@
 SearchMenu::SearchMenu(const User& u) : user(u) {}
 
 void SearchMenu::show() {
-    ConsoleUtils::clear();
+    // ConsoleUtils::clear();
     std::cout << "=== Search Articles ===\n";
     std::string keyword, startDate, endDate;
     std::cout << "Enter keyword: ";

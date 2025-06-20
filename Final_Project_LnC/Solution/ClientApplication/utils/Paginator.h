@@ -21,7 +21,7 @@ public:
     void display(const std::function<void(const T&)>& renderItem) {
         size_t totalPages = (items.size() + pageSize - 1) / pageSize;
         while (true) {
-            system("clear");
+            // system("clear");
             std::cout << "Page " << currentPage + 1 << " of " << totalPages << "\n";
             size_t start = currentPage * pageSize;
             size_t end = std::min(start + pageSize, items.size());
@@ -37,7 +37,7 @@ public:
             } else if (cmd == 'P' || cmd == 'p') {
                 if (currentPage > 0) currentPage--;
             }
-            else if (cmd == 'P' || cmd == 'p'){
+            else if (cmd == 'b' || cmd == 'B'){
                 break;
             } else {
                 std::cout << "Invalid command. Use N, P or B.\n";
