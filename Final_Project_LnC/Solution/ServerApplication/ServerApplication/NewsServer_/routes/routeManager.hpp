@@ -1,11 +1,11 @@
-#ifndef ROUTEMANAGER_HPP
-#define ROUTEMANAGER_HPP
+#ifndef ROUTE_MANAGER_HPP
+#define ROUTE_MANAGER_HPP
 
 #include <pistache/router.h>
 
 class RouteManager {
 public:
-    static void init(Pistache::Rest::Router& router);
+    static void setupRoutes(Pistache::Rest::Router& router);
 };
 
-#endif
+#endif 

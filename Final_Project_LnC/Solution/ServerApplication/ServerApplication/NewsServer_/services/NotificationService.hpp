@@ -1,14 +1,14 @@
-#ifndef NOTIFICATION_SERVICE_HPP
-#define NOTIFICATION_SERVICE_HPP
+#ifndef NOTIFICATIONSERVICE_HPP
+#define NOTIFICATIONSERVICE_HPP
 
+#include <nlohmann/json.hpp>
 #include <string>
-#include <pistache/http.h>  
 
 class NotificationService {
 public:
-    static void configureCategory(int userId, const std::string& category, bool enabled, Pistache::Http::ResponseWriter&& response);
-    static void configureKeyword(int userId, const std::string& keyword, Pistache::Http::ResponseWriter&& response);
-    static void getUserPreferences(int userId, Pistache::Http::ResponseWriter&& response);
+    static void setCategoryPreference(int userId, const std::string& category, bool isEnabled);
+    static void setKeywordPreference(int userId, const std::string& keyword, bool isEnabled);
+    static nlohmann::json getUserPreferences(int userId);
 };
 
 #endif 

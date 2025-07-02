@@ -1,11 +1,15 @@
-#ifndef EMAILSENDER_HPP
-#define EMAILSENDER_HPP
+#ifndef EMAIL_SENDER_HPP
+#define EMAIL_SENDER_HPP
 
 #include <string>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 class EmailSender {
 public:
-    static bool send(const std::string& to, const std::string& subject, const std::string& body);
+    static void sendNotifications(int userId, const nlohmann::json& articles);
+private:
+    static bool sendEmail(const std::string& to, const std::string& subject, const std::string& body);
 };
 
-#endif
+#endif 

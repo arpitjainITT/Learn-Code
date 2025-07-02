@@ -6,10 +6,21 @@
 
 class DBManager {
 public:
-    static void init(const std::string& dbPath);
-    static sqlite3* getDB();
+    static DBManager& getInstance();                  
+    ~DBManager();                                     
+
+    bool initializeDB(const std::string& dbPath);     
+    sqlite3* getDB() const { return db; }            
+    void close();                                  
+
 private:
-    static sqlite3* db;
+    DBManager() = default;                           
+    DBManager(const DBManager&) = delete;
+    DBManager& operator=(const DBManager&) = delete;
+
+    bool executeSchema();                            
+
+    sqlite3* db = nullptr;
 };
 
 #endif 

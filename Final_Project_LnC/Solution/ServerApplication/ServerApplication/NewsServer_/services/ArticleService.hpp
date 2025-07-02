@@ -1,24 +1,24 @@
-#ifndef ARTICLE_SERVICE_HPP
-#define ARTICLE_SERVICE_HPP
+#ifndef ARTICLESERVICE_HPP
+#define ARTICLESERVICE_HPP
 
-#include <pistache/http.h>
-#include <pistache/endpoint.h>
-#include <pistache/router.h>
+#include <nlohmann/json.hpp>
+#include <string>
 
 class ArticleService {
 public:
-    static void getAllArticles(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    static void getArticlesByCategory(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    static void getArticleById(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    
-    static void saveArticle(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    static void getSavedArticles(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    static void deleteSavedArticle(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
+    static nlohmann::json getAllArticles();
+    static nlohmann::json getArticleById(int articleId);
+    static nlohmann::json getArticlesByCategory(const std::string& category);
 
-    static void fetchAndStore(); // for FetchScheduler
-    
+    static void saveArticle(int userId, int articleId);
+    static void deleteSavedArticle(int userId, int articleId);
+    static nlohmann::json getSavedArticlesForUser(int userId);
+
+    static void likeArticle(int userId, int articleId);
+    static void dislikeArticle(int userId, int articleId);
+    static nlohmann::json getReactionStats(int articleId);
+
+    static void storeArticle(const nlohmann::json& article);  // Used by scheduler/API adapter
 };
 
-#endif
-
-
+#endif 

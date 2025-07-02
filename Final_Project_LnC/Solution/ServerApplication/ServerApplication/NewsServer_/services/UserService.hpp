@@ -1,13 +1,14 @@
 #ifndef USERSERVICE_HPP
 #define USERSERVICE_HPP
 
-#include <pistache/http.h>
-#include <pistache/router.h>
+#include <nlohmann/json.hpp>
+#include <string>
 
 class UserService {
 public:
-    static void signup(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
-    static void login(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response);
+    static bool login(const std::string& email, const std::string& password, int& userId, std::string& role);
+    static bool signup(const std::string& username, const std::string& email, const std::string& password);
+    static int getUserIdByEmail(const std::string& email);
 };
 
 #endif

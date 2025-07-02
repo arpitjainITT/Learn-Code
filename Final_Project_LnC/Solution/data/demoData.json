@@ -1,0 +1,87 @@
+[
+    {
+        "email": "potter@hogwarts.com",
+        "id": 1,
+        "notification_viewed_at": null,
+        "password": "expecto_patronum",
+        "role_id": 2,
+        "username": "Harry Potter"
+    },
+    {
+        "email": "granger@hogwarts.com",
+        "id": 2,
+        "notification_viewed_at": null,
+        "password": "wingardium_leviosa",
+        "role_id": 2,
+        "username": "Hermoine Granger"
+    },
+    {
+        "email": "lovegood@hogwarts.com",
+        "id": 3,
+        "notification_viewed_at": null,
+        "password": "stupefy",
+        "role_id": 2,
+        "username": "Luna Lovegood"
+    },
+    {
+        "email": "headmaster@hogwarts.com",
+        "id": 4,
+        "notification_viewed_at": null,
+        "password": "sherbet_lemon",
+        "role_id": 1,
+        "username": "Albus Percival Wulfric Brian Dumbledore"
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// void FetchScheduler::fetchAndStoreArticles() {
+//     try {
+//         std::string apiKey = "cf2275c8dedd4fef9c4b5c49d2bd09bb";
+//         std::string apiUrl = "https://newsapi.org/v2/top-headlines?country=us&apiKey=" + apiKey;
+//         std::cout << "URL" << apiUrl << "\n";
+//         std::string response = HttpClient::get(apiUrl);
+//         auto data = json::parse(response);
+//         std::cout << "[FetchScheduler] Received response: " << data.dump(2) << "\n";
+
+//         if (data.contains("articles")) {
+//             for (const auto& article : data["articles"]) {
+//                 json formatted = {
+//                     {"title", safe_get(article, "title")},
+//                     {"description", safe_get(article, "description")},
+//                     {"category", ""},  // default; classifier will assign
+//                     {"language", "en"},
+//                     {"locale", "us"},
+//                     {"url", safe_get(article, "url")},
+//                     {"image_url", safe_get(article, "urlToImage")},
+//                     {"content", safe_get(article, "content")},
+//                     {"source", article.contains("source") && article["source"].contains("name") && article["source"]["name"].is_string()
+//                         ? article["source"]["name"].get<std::string>()
+//                         : ""}
+//                 };                
+//                 std::cout << "[FetchScheduler] Storing article: " << formatted["title"] << " and the [FetchScheduler] Storing source name as " << formatted["source"] << "\n";
+//                 ArticleService::storeArticle(formatted);
+//             }
+//         }
+//     } catch (const std::exception& ex) {
+//         std::cerr << "[FetchScheduler] Failed: " << ex.what() << "\n";
+//     }
+// }

@@ -3,6 +3,9 @@
 
 #include <pistache/router.h>
 
-void register_article_routes(Pistache::Rest::Router& router);
+class ArticleRoutes {
+public:
+    static void setup(Pistache::Rest::Router& router);
+};
 
 #endif 

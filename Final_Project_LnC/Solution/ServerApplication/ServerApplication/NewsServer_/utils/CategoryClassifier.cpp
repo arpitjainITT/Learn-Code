@@ -20,7 +20,7 @@ std::string CategoryClassifier::classify(const std::string& title, const std::st
     std::string combined = title + " " + content;
 
     if (containsKeyword(combined, {
-        "ai", "tech", "software", "hardware", "gadgets", "startup", "technology", "robot", "innovation", "cybersecurity"
+        "ai", "tech", "software", "hardware", "gadgets", "startup", "technology", "robot", "innovation", "cybersecurity", "Samsung"
     })) return "Technology";
 
     if (containsKeyword(combined, {
@@ -48,7 +48,7 @@ std::string CategoryClassifier::classify(const std::string& title, const std::st
     })) return "Politics";
 
     if (containsKeyword(combined, {
-        "climate", "global warming", "environment", "pollution", "wildlife", "sustainability", "recycle", "carbon", "eco", "deforestation", "greenhouse"
+        "climate", "global warming", "environment", "pollution", "wildlife", "sustainability", "recycle", "carbon", "eco", "deforestation", "greenhouse", "heat"
     })) return "Environment";
 
     if (containsKeyword(combined, {

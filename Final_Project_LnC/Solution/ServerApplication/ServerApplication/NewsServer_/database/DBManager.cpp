@@ -1,83 +1,147 @@
 #include "DBManager.hpp"
 #include <iostream>
 
-sqlite3* DBManager::db = nullptr;
-
-void DBManager::init(const std::string& dbPath) {
-    if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
-        std::cerr << "Failed to open DB\n";
-    }
-
-    const char* createArticles =
-        "CREATE TABLE IF NOT EXISTS articles ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "title TEXT, content TEXT, source TEXT, url TEXT, category TEXT, published_at TEXT);";
-
-    sqlite3_exec(db, createArticles, 0, 0, nullptr);
-
-    const char* createUsers =
-    "CREATE TABLE IF NOT EXISTS users ("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "username TEXT UNIQUE, "
-    "email TEXT UNIQUE, "
-    "password TEXT, "
-    "role TEXT);";  // 'admin' or 'user' for now
-
-    sqlite3_exec(db, createUsers, 0, 0, nullptr);
-
-    const char* createSavedArticles =
-    "CREATE TABLE IF NOT EXISTS saved_articles ("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "user_id INTEGER, "
-    "article_id INTEGER, "
-    "saved_at TEXT DEFAULT CURRENT_TIMESTAMP, "
-    "FOREIGN KEY(user_id) REFERENCES users(id), "
-    "FOREIGN KEY(article_id) REFERENCES articles(id));";
-
-    sqlite3_exec(db, createSavedArticles, 0, 0, nullptr);
-
-    const char* createNotifications =
-    "CREATE TABLE IF NOT EXISTS notifications ("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "user_id INTEGER, "
-    "title TEXT, "
-    "message TEXT, "
-    "timestamp TEXT, "
-    "FOREIGN KEY(user_id) REFERENCES users(id));";
-
-    sqlite3_exec(db, createNotifications, 0, 0, nullptr);
-
-    const char* createKeywordPrefs =
-        "CREATE TABLE IF NOT EXISTS keyword_preferences ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "user_id INTEGER, "
-        "keyword TEXT, "
-        "FOREIGN KEY(user_id) REFERENCES users(id));";
-
-    sqlite3_exec(db, createKeywordPrefs, 0, 0, nullptr);
-
-    const char* createExternalSources =
-    "CREATE TABLE IF NOT EXISTS external_sources ("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "name TEXT, "
-    "url TEXT, "
-    "api_key TEXT, "
-    "active INTEGER DEFAULT 1, "
-    "last_accessed TEXT);";
-
-    sqlite3_exec(db, createExternalSources, 0, 0, nullptr);
-
-    const char* createCategories =
-        "CREATE TABLE IF NOT EXISTS categories ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        "name TEXT UNIQUE);";
-
-    sqlite3_exec(db, createCategories, 0, 0, nullptr);
-
-    
-
+DBManager::~DBManager() {
+    close();
 }
 
-sqlite3* DBManager::getDB() {
-    return db;
+DBManager& DBManager::getInstance() {
+    static DBManager instance;
+    return instance;
+}
+
+bool DBManager::initializeDB(const std::string& dbPath) {
+    if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
+        std::cerr << "Failed to open DB: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+    return executeSchema();
+}
+
+void DBManager::close() {
+    if (db) {
+        sqlite3_close(db);
+        db = nullptr;
+    }
+}
+
+bool DBManager::executeSchema() {
+    const char* schema = R"(
+        PRAGMA foreign_keys = ON;
+
+        CREATE TABLE IF NOT EXISTS user_role (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL UNIQUE
+        );
+
+        INSERT OR IGNORE INTO user_role(type) VALUES ('admin'), ('user');
+
+        CREATE TABLE IF NOT EXISTS user (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role_id INTEGER NOT NULL,
+            notification_viewed_at DATETIME DEFAULT NULL,
+            FOREIGN KEY (role_id) REFERENCES user_role(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS server_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL UNIQUE
+        );
+
+        INSERT OR IGNORE INTO server_status(type) VALUES ('active'), ('inactive');
+
+        CREATE TABLE IF NOT EXISTS external_server (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            server_name TEXT NOT NULL,
+            api_url TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            server_status_id INTEGER NOT NULL,
+            last_accessed DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (server_status_id) REFERENCES server_status(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS news_article (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            title TEXT NOT NULL,
+            description TEXT,
+            category TEXT,
+            language TEXT,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            locale TEXT,
+            url TEXT UNIQUE,
+            image_url TEXT,
+            content TEXT,
+            source TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS news_category (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_type TEXT NOT NULL UNIQUE
+        );
+
+        CREATE TABLE IF NOT EXISTS news_article_category (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            news_id INTEGER NOT NULL,
+            category_id INTEGER NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (news_id) REFERENCES news_article(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES news_category(id) ON DELETE CASCADE,
+            UNIQUE(news_id, category_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS saved_news (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            news_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            saved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (news_id) REFERENCES news_article(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+            UNIQUE(user_id, news_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS news_article_reaction (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            news_id INTEGER NOT NULL,
+            reaction_type TEXT CHECK(reaction_type IN ('like', 'dislike')) NOT NULL,
+            reacted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+            FOREIGN KEY (news_id) REFERENCES news_article(id) ON DELETE CASCADE,
+            UNIQUE(user_id, news_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS notification_keyword_pref (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            keyword TEXT NOT NULL,
+            is_enabled INTEGER NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+            UNIQUE(user_id, keyword)
+        );
+
+        CREATE TABLE IF NOT EXISTS notification_category_pref (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category_id INTEGER NOT NULL,
+            is_enabled INTEGER NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES news_category(id) ON DELETE CASCADE,
+            UNIQUE(user_id, category_id)
+        );
+    )";
+
+    char* errMsg = nullptr;
+    int rc = sqlite3_exec(db, schema, nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+        std::cerr << "Schema creation failed: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        return false;
+    }
+    return true;
 }

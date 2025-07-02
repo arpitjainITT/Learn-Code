@@ -4,8 +4,12 @@
 #include <pistache/net.h>
 #include <iostream>
 #include <csignal>
+#include <atomic>
+#include <thread>
+
 #include "routes/RouteManager.hpp"
 #include "database/DBManager.hpp"
+#include "database/DataBase.hpp"
 #include "scheduler/FetchScheduler.hpp"
 
 using namespace Pistache;
@@ -16,8 +20,7 @@ public:
         : httpEndpoint(std::make_shared<Http::Endpoint>(addr)) {}
 
     void init(size_t threads = 2) {
-        auto opts = Http::Endpoint::options()
-                        .threads(static_cast<int>(threads));
+        auto opts = Http::Endpoint::options().threads(static_cast<int>(threads));
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -33,7 +36,7 @@ public:
 
 private:
     void setupRoutes() {
-        RouteManager::init(router);
+        RouteManager::setupRoutes(router);  
     }
 
     std::shared_ptr<Http::Endpoint> httpEndpoint;
@@ -41,34 +44,49 @@ private:
 };
 
 std::shared_ptr<ServerApp> globalApp;
+FetchScheduler scheduler;  
+std::atomic<bool> isShuttingDown(false);
 
 void handleSignal(int signal) {
-    if (globalApp) {
-        std::cout << "\nShutting down server peacefully and gracefully on your order....." << std::endl;
-        globalApp->shutdown();
+    if (isShuttingDown.exchange(true)) {
+        return; // Already shutting down
     }
+
+    std::cout << "\nShutting down server peacefully and gracefully on your order.....\n";
+
+    if (globalApp) {
+        globalApp->shutdown(); // STOP HTTP endpoint
+    }
+
+    scheduler.stop(); // STOP scheduler
+
     exit(0);
 }
 
 int main() {
-    DBManager::init("../../../../data/news2.db");
-    FetchScheduler::start(3 * 60 * 60); 
+    if (!DBManager::getInstance().initializeDB("../../../../data/news9.db")) {
+        std::cerr << "Failed to initialize database.\n";
+        return 1;
+    }
+
+    //Creating admin on the start of application
+    Database::createDefaultAdmin();
+    
+    scheduler.start();
+
     Pistache::Port port(9080);
     Pistache::Address addr(Pistache::Ipv4::any(), port);
 
     std::cout << "Starting server at http://localhost:" << port << " ..." << std::endl;
 
     globalApp = std::make_shared<ServerApp>(addr);
-    globalApp->init(4); // using 4 threads
+    globalApp->init(4);
 
-    // Register signal handler for Ctrl+C and termination signals
     std::signal(SIGINT, handleSignal);
     std::signal(SIGTERM, handleSignal);
 
     globalApp->start();
 
-    // Keep main thread alive
-    while (true) pause();
-
+    while (true) pause();  // Wait indefinitely until signal is caught
     return 0;
 }

@@ -1,7 +1,30 @@
 #include "EmailSender.hpp"
+#include "../services/UserService.hpp"
+#include "../services/NotificationService.hpp"
+#include <iostream>
 #include <curl/curl.h>
 
-bool EmailSender::send(const std::string& to, const std::string& subject, const std::string& body) {
+using json = nlohmann::json;
+
+void EmailSender::sendNotifications(int userId, const json& articles) {
+    json preferences = NotificationService::getUserPreferences(userId);
+    std::string email = "user@example.com"; // Replace with actual lookup
+
+    std::string body = "Your personalized news:\n\n";
+    for (const auto& article : articles) {
+        std::string title = article.value("title", "");
+        std::string desc = article.value("description", "");
+        std::string category = article.value("category", "");
+        std::string url = article.value("url", "");
+
+        body += title + "\n" + desc + "\n" + category + "\n" + url + "\n\n";
+    }
+
+    sendEmail(email, "News Update", body);
+}
+
+bool EmailSender::sendEmail(const std::string& to, const std::string& subject, const std::string& body) {
+    std::cout << "[EmailSender] Sending email to " << to << ":\nSubject: " << subject << "\n\n" << body << "\n";
     CURL* curl = curl_easy_init();
     if (!curl) return false;
 
