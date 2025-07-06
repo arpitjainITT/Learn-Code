@@ -78,6 +78,20 @@ Rest::Route::Result dislikeArticleHandler(const Rest::Request& req, Http::Respon
     return Rest::Route::Result::Ok;
 }
 
+// GET /articles/search?keyword=&startDate=&endDate=&sort=
+Rest::Route::Result searchArticlesHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    auto query = req.query();
+    std::string keyword   = query.get("keyword").value_or("");
+    std::string startDate = query.get("startDate").value_or("");
+    std::string endDate   = query.get("endDate").value_or("");
+    std::string sortBy    = query.get("sort").value_or("");  // "likes", "dislikes", or ""
+
+
+    json result = ArticleService::searchArticles(keyword, startDate, endDate, sortBy);
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
 // GET /articles/:id/reactions
 Rest::Route::Result getReactionStatsHandler(const Rest::Request& req, Http::ResponseWriter response) {
     int articleId = req.param(":id").as<int>();
@@ -97,5 +111,6 @@ void ArticleRoutes::setup(Rest::Router& router) {
     Routes::Get(router, "/articles/saved/:userId", getSavedArticlesHandler);
     Routes::Post(router, "/articles/:id/like", likeArticleHandler);
     Routes::Post(router, "/articles/:id/dislike", dislikeArticleHandler);
+    Routes::Get(router, "/articles/search", searchArticlesHandler);
     Routes::Get(router, "/articles/:id/reactions", getReactionStatsHandler);
 }

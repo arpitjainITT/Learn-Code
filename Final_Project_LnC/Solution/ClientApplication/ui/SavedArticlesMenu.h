@@ -1,10 +1,18 @@
-#pragma once
+#ifndef SAVEDARTICLESMENU_H
+#define SAVEDARTICLESMENU_H
+
 #include "../models/User.h"
 
 class SavedArticlesMenu {
-private:
-    User user;
 public:
-    SavedArticlesMenu(const User& u);
-    void show();
+    explicit SavedArticlesMenu(const User& user);
+    void display();
+
+private:
+    User currentUser;
+
+    void listSavedArticles();
+    void deleteArticle(int articleId);
 };
+
+#endif 

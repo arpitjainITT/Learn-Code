@@ -17,6 +17,7 @@ public:
     static void likeArticle(int userId, int articleId);
     static void dislikeArticle(int userId, int articleId);
     static nlohmann::json getReactionStats(int articleId);
+    static nlohmann::json searchArticles(const std::string& keyword, const std::string& startDate, const std::string& endDate, const std::string& sortBy);
 
     static void storeArticle(const nlohmann::json& article);  // Used by scheduler/API adapter
 };

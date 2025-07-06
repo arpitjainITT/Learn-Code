@@ -1,21 +1,23 @@
-#pragma once
+#ifndef USER_H
+#define USER_H
+
 #include <string>
 
 class User {
-private:
-    std::string username;
-    std::string email;
+    int id;
     std::string role;
-    std::string token;
+    std::string email;
 
 public:
-    void setUsername(const std::string& name) { username = name; }
-    void setEmail(const std::string& mail) { email = mail; }
-    void setRole(const std::string& r) { role = r; }
-    void setToken(const std::string& t) { token = t; }
+    User() : id(-1), role("user"), email("") {}
 
-    std::string getUsername() const { return username; }
-    std::string getEmail() const { return email; }
+    int getId() const { return id; }
     std::string getRole() const { return role; }
-    std::string getToken() const { return token; }
+    std::string getEmail() const { return email; }
+
+    void setId(int userId) { id = userId; }
+    void setRole(const std::string& r) { role = r; }
+    void setEmail(const std::string& e) { email = e; }
 };
+
+#endif 

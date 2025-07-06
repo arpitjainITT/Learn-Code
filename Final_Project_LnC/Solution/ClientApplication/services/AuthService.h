@@ -1,8 +1,13 @@
-#pragma once
+#ifndef AUTHSERVICE_H
+#define AUTHSERVICE_H
+
 #include "../models/User.h"
+#include <string>
 
 class AuthService {
 public:
-    bool login(User& user);
-    void signup();
+    static bool login(const std::string& email, const std::string& password, User& user);
+    static bool signup(const std::string& username, const std::string& email, const std::string& password);
 };
+
+#endif 

@@ -36,6 +36,11 @@ void ArticleService::dislikeArticle(int userId, int articleId) {
     Database::dislikeArticle(userId, articleId);
 }
 
+json ArticleService::searchArticles(const std::string& keyword, const std::string& startDate, const std::string& endDate, const std::string& sortBy) {
+    return Database::searchArticles(keyword, startDate, endDate, sortBy);
+}
+
+
 json ArticleService::getReactionStats(int articleId) {
     return Database::getReactionStats(articleId);
 }

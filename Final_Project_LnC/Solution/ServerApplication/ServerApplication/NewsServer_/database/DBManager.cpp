@@ -134,6 +134,19 @@ bool DBManager::executeSchema() {
             FOREIGN KEY (category_id) REFERENCES news_category(id) ON DELETE CASCADE,
             UNIQUE(user_id, category_id)
         );
+
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            article_id INTEGER,
+            title TEXT,
+            message TEXT,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+            read INTEGER DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES user(id),
+            FOREIGN KEY(article_id) REFERENCES news_article(id)
+        );
+
     )";
 
     char* errMsg = nullptr;

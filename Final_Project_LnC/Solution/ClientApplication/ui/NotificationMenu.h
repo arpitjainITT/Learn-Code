@@ -1,10 +1,20 @@
-#pragma once
+#ifndef NOTIFICATIONMENU_H
+#define NOTIFICATIONMENU_H
+
 #include "../models/User.h"
 
 class NotificationMenu {
-private:
-    User user;
 public:
-    NotificationMenu(const User& u);
-    void show();
+    explicit NotificationMenu(const User& user);
+    void display();
+
+private:
+    User currentUser;
+
+    void viewDeliveredNotifications();     // View actual notifications
+    void viewPreferences();                // View category + keyword settings
+    void configureCategory();
+    void configureKeyword();
 };
+
+#endif // NOTIFICATIONMENU_H

@@ -1,44 +1,49 @@
 #include "AuthService.h"
 #include "../utils/HttpClient.h"
-#include "../utils/Validator.h"
-#include "../utils/ConsoleUtils.h"
 #include "../constants/APIEndpoints.h"
+#include <nlohmann/json.hpp>
 #include <iostream>
 
-bool AuthService::login(User& user) {
-    std::string email, password;
-    std::cout << "Email: "; std::cin >> email;
-    std::cout << "Password: "; std::cin >> password;
+using json = nlohmann::json;
 
-    std::string body = "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
-    std::string response = HttpClient::post(std::string(BASE_URL) + LOGIN_ENDPOINT, body);
+bool AuthService::login(const std::string& email, const std::string& password, User& user) {
+    json requestBody = {
+        {"email", email},
+        {"password", password}
+    };
 
-    if (response.find("success") != std::string::npos) {
-        user.setEmail(email);
-        user.setUsername("USERNAME"); 
-        user.setRole(response.find("admin") != std::string::npos ? "admin" : "user");
-        user.setToken("mocked_token_123"); // will get replace with parsed value in real
-
-        return true;
+    std::string responseStr = HttpClient::post(API::LOGIN, requestBody.dump());
+    json response;
+    try {
+        response = json::parse(responseStr);
+        if (response["status"] == "success") {
+            user.setId(response["user_id"]);
+            user.setRole(response["role"]);
+            user.setEmail(email); // email is known already from input
+            
+            return true;
+        }        
+    } catch (...) {
+        std::cerr << "Login failed. Response: " << responseStr << "\n";
     }
 
-    std::cout << "Login failed.\n";
     return false;
 }
 
-void AuthService::signup() {
-    std::string name, email, password;
-    std::cout << "Username: "; std::cin >> name;
-    std::cout << "Email: "; std::cin >> email;
-    std::cout << "Password: "; std::cin >> password;
+bool AuthService::signup(const std::string& username, const std::string& email, const std::string& password) {
+    json requestBody = {
+        {"username", username},
+        {"email", email},
+        {"password", password}
+    };
 
-    if (!Validator::isValidEmail(email)) {
-        std::cout << "Invalid email.\n";
-        return;
+    std::string responseStr = HttpClient::post(API::SIGNUP, requestBody.dump());
+    json response;
+    try {
+        response = json::parse(responseStr);
+        return response["status"] == "user registered";
+    } catch (...) {
+        std::cerr << "Signup failed. Response: " << responseStr << "\n";
+        return false;
     }
-
-    std::string body = "{\"username\":\"" + name + "\",\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
-    std::string response = HttpClient::post(std::string(BASE_URL) + SIGNUP_ENDPOINT, body);
-
-    std::cout << (response.find("success") != std::string::npos ? "Signup successful.\n" : "Signup failed.\n");
 }

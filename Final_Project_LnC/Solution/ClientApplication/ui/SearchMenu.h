@@ -1,10 +1,17 @@
-#pragma once
+#ifndef SEARCHMENU_H
+#define SEARCHMENU_H
+
 #include "../models/User.h"
 
 class SearchMenu {
-private:
-    User user;
 public:
-    SearchMenu(const User& u);
-    void show();
+    explicit SearchMenu(const User& user);
+    void display();
+
+private:
+    User currentUser;
+
+    void performSearch();
 };
+
+#endif 

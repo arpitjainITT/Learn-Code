@@ -1,58 +1,107 @@
 #include "NewsService.h"
 #include "../utils/HttpClient.h"
-#include "../utils/Paginator.h"
 #include "../constants/APIEndpoints.h"
-#include "../utils/nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #include <iostream>
 
-std::vector<Article> NewsService::getTodayHeadlines(const std::string& category) {
-    std::string url = std::string(BASE_URL) + ARTICLES_ALL;
-    if (category != "all")
-        url = std::string(BASE_URL) + ARTICLES_BY_CATEGORY + "/" + category;
+using json = nlohmann::json;
 
-    std::string response = HttpClient::get(url);
-    return parseArticlesFromJson(response);
-}
+std::vector<Article> NewsService::getArticles(const std::string& category,
+                                              const std::string& startDate,
+                                              const std::string& endDate) {
+    std::vector<Article> articles;
 
-void NewsService::printArticlesTable(const std::vector<Article>& articles) {
-    Paginator<Article> pager(articles);
-    pager.display([](const Article& article) {
-        std::cout << article.id << "\t" << article.title << "\t"
-                  << (article.content.length() > 24 ? article.content.substr(0, 24) + "..." : article.content) << "\t"
-                  << article.source << "\t" << article.category << "\t"
-                  << article.publishedTime << "\n";
-    });
+    std::string endpoint = API::ALL_ARTICLES;
+    bool hasParams = false;
+
+    if (!category.empty() && category != "all") {
+        endpoint += "?category=" + category;
+        hasParams = true;
+    }
+
+    if (!startDate.empty() && !endDate.empty()) {
+        endpoint += (hasParams ? "&" : "?");
+        endpoint += "start=" + startDate + "&end=" + endDate;
+    }
+
+    try {
+        std::string responseStr = HttpClient::get(endpoint);
+        auto jsonArr = json::parse(responseStr);
+
+        for (const auto& item : jsonArr) {
+            Article a;
+            a.id = item.value("id", 0);
+            a.title = item.value("title", "");
+            a.description = item.value("description", "");
+            a.category = item.value("category", "Uncategorized");
+            a.source = item.value("source", "");
+            a.url = item.value("url", "");
+            a.createdAt = item.value("created_at", "");
+            articles.push_back(a);
+        }
+    } catch (...) {
+        std::cerr << "Failed to parse article list.\n";
+    }
+
+    return articles;
 }
 
 std::vector<Article> NewsService::searchArticles(const std::string& keyword,
                                                  const std::string& startDate,
-                                                 const std::string& endDate) {
-    std::string url = std::string(BASE_URL) + "/api/news/search?keyword=" + keyword +
-                      "&start=" + startDate + "&end=" + endDate;
-    std::string response = HttpClient::get(url);
-    return parseArticlesFromJson(response);
-}
-
-std::vector<Article> NewsService::parseArticlesFromJson(const std::string& response) {
+                                                 const std::string& endDate,
+                                                 const std::string& sortBy) {
     std::vector<Article> articles;
+
+    std::string url = API::SEARCH_ARTICLES + "?keyword=" + keyword;
+
+    if (!startDate.empty() && !endDate.empty()) {
+        url += "&start_date=" + startDate + "&end_date=" + endDate;
+    }
+    if (!sortBy.empty()) {
+        url += "&sort=" + sortBy;
+    }
+
     try {
-        auto parsed = nlohmann::json::parse(response);
-        auto jsonArr = parsed.is_array() ? parsed : parsed["articles"];
+        std::string responseStr = HttpClient::get(url);
+        auto jsonArr = json::parse(responseStr);
 
         for (const auto& item : jsonArr) {
-            std::string id = std::to_string(item.value("id", 0));
-            std::string title = item.value("title", "");
-            std::string content = item.value("content", "");
-            std::string source = item.value("source", "");
-            std::string url = item.value("url", "");
-            std::string category = item.value("category", "");
-            std::string publishedTime = item.value("published_at", "");
-
-            articles.push_back({id, title, content, source, url, category, publishedTime});
+            Article a;
+            a.id = item.value("id", 0);
+            a.title = item.value("title", "");
+            a.description = item.value("description", "");
+            a.category = item.value("category", "Uncategorized");
+            a.source = item.value("source", "");
+            a.url = item.value("url", "");
+            a.createdAt = item.value("created_at", "");
+            articles.push_back(a);
         }
-    } catch (const std::exception& e) {
-        std::cerr << "Failed to parse articles JSON: " << e.what() << "\n";
+    } catch (...) {
+        std::cerr << "Failed to search articles.\n";
     }
 
     return articles;
+}
+
+void NewsService::saveArticle(int userId, int articleId) {
+    json body = {
+        {"user_id", userId},
+        {"article_id", articleId}
+    };
+
+    HttpClient::post(API::SAVE_ARTICLE, body.dump());
+}
+
+void NewsService::likeArticle(int userId, int articleId) {
+    json body = {
+        {"user_id", userId}
+    };
+    HttpClient::post(API::LIKE_ARTICLE + std::to_string(articleId) + "/like", body.dump());
+}
+
+void NewsService::dislikeArticle(int userId, int articleId) {
+    json body = {
+        {"user_id", userId}
+    };
+    HttpClient::post(API::DISLIKE_ARTICLE + std::to_string(articleId) + "/dislike", body.dump());
 }

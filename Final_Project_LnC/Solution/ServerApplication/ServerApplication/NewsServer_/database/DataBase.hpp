@@ -16,6 +16,7 @@ public:
 
     static void likeArticle(int userId, int articleId);
     static void dislikeArticle(int userId, int articleId);
+    static nlohmann::json searchArticles(const std::string& keyword, const std::string& startDate, const std::string& endDate, const std::string& sortBy);
     static nlohmann::json getReactionStats(int articleId);
 
     static void addCategory(const std::string& category);
@@ -24,6 +25,13 @@ public:
     static void setCategoryNotificationPreference(int userId, int categoryId, bool isEnabled);
     static void setKeywordNotificationPreference(int userId, const std::string& keyword, bool isEnabled);
     static nlohmann::json getUserNotificationPreferences(int userId);
+    static void addNotificationsForCategory(int userId, const std::string& category);
+    static void filterNotificationsByKeyword(int userId, const std::string& keyword);
+    static nlohmann::json getDeliveredNotifications(int userId);
+    static nlohmann::json getUnreadNotifications(int userId);
+    static void insertNotification(int userId, int articleId, const std::string& title, const std::string& message);
+    static void markNotificationsAsRead(int userId);
+    static void notifyUsersIfMatched(const std::string& title, const std::string& content, const std::string& category, int articleId);
 
     static nlohmann::json getAllExternalServers();
     static nlohmann::json getExternalServerById(int serverId);

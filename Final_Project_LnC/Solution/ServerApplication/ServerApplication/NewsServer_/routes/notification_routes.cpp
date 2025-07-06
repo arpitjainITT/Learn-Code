@@ -1,5 +1,6 @@
 #include "notification_routes.hpp"
 #include "../services/NotificationService.hpp"
+#include "../database/Database.hpp"
 #include <pistache/http.h>
 #include <nlohmann/json.hpp>
 
@@ -38,10 +39,28 @@ Rest::Route::Result getPreferencesHandler(const Rest::Request& req, Http::Respon
     return Rest::Route::Result::Ok;
 }
 
+// GET /notifications/:userId
+Rest::Route::Result getDeliveredNotificationsHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    int userId = req.param(":userId").as<int>();
+    json result = NotificationService::getDeliveredNotifications(userId);
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
+Rest::Route::Result markNotificationsAsReadHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    int userId = req.param(":userId").as<int>();
+    Database::markNotificationsAsRead(userId);
+    response.send(Http::Code::Ok, "Notifications marked as read.");
+    return Rest::Route::Result::Ok;
+}
+
 void NotificationRoutes::setup(Rest::Router& router) {
     using namespace Rest;
 
-    Routes::Post(router, "/notifications/category", setCategoryPrefHandler);
-    Routes::Post(router, "/notifications/keyword", setKeywordPrefHandler);
+    Routes::Post(router, "/notifications/category",           setCategoryPrefHandler);
+    Routes::Post(router, "/notifications/keyword",            setKeywordPrefHandler);
     Routes::Get(router, "/notifications/preferences/:userId", getPreferencesHandler);
+    Routes::Get(router, "/notifications/:userId",             getDeliveredNotificationsHandler);
+    Routes::Post(router, "/notifications/markread/:userId", markNotificationsAsReadHandler);
+
 }
