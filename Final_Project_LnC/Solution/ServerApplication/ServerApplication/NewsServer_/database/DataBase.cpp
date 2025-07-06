@@ -1,5 +1,6 @@
 #include "Database.hpp"
 #include "DBManager.hpp"
+#include "../utils/Strings.hpp"
 #include <nlohmann/json.hpp>
 #include <sqlite3.h>
 #include <iostream>
@@ -28,12 +29,12 @@ json Database::getAllArticles() {
                 {"description", (const char*)sqlite3_column_text(stmt, 2)},
                 {"url", (const char*)sqlite3_column_text(stmt, 3)},
                 {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : "Uncategorized"}
+                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
             };
             result.push_back(article);
         }
     } else {
-        std::cerr << "Failed to fetch articles.\n";
+        std::cerr << Strings::DB_FETCH_ARTICLES_FAIL;
     }
     finalize(stmt);
     return result;
@@ -85,7 +86,7 @@ json Database::getArticleById(int id) {
                 {"description", (const char*)sqlite3_column_text(stmt, 2)},
                 {"url", (const char*)sqlite3_column_text(stmt, 3)},
                 {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : "Uncategorized"}
+                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
             };
         }
     }
@@ -103,10 +104,10 @@ void Database::saveArticleForUser(int userId, int articleId) {
         sqlite3_bind_int(stmt, 1, userId);
         sqlite3_bind_int(stmt, 2, articleId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to save article for user\n";
+            std::cerr << Strings::DB_SAVE_ARTICLE_FAIL;
         }
     } else {
-        std::cerr << "Prepare failed for saveArticleForUser\n";
+        std::cerr << Strings::DB_PREPARE_SAVE_ARTICLE_FAIL;
     }
     finalize(stmt);
 }
@@ -131,12 +132,12 @@ json Database::getSavedArticlesForUser(int userId) {
                 {"description", (const char*)sqlite3_column_text(stmt, 2)},
                 {"url", (const char*)sqlite3_column_text(stmt, 3)},
                 {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : "Uncategorized"}
+                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
             };
             result.push_back(article);
         }
     } else {
-        std::cerr << "Failed to fetch saved articles for user\n";
+        std::cerr << Strings::DB_FETCH_SAVED_ARTICLES_FAIL;
     }
     finalize(stmt);
     return result;
@@ -152,9 +153,9 @@ void Database::deleteSavedArticle(int userId, int articleId) {
         sqlite3_bind_int(stmt, 1, userId);
         sqlite3_bind_int(stmt, 2, articleId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to delete saved article\n";
+            std::cerr << Strings::DB_DELETE_SAVED_ARTICLE_FAIL;
         }
-        std::cerr << "Article " << articleId << " has been successfully deleted for user " << userId << ".\n";
+        std::cerr << Strings::DB_DELETE_SAVED_ARTICLE_SUCCESS;
     }
     finalize(stmt);
 }
@@ -171,7 +172,7 @@ void Database::likeArticle(int userId, int articleId) {
         sqlite3_bind_int(stmt, 1, userId);
         sqlite3_bind_int(stmt, 2, articleId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to like article.\n";
+            std::cerr << Strings::DB_LIKE_ARTICLE_FAIL;
         }
     }
     finalize(stmt);
@@ -189,7 +190,7 @@ void Database::dislikeArticle(int userId, int articleId) {
         sqlite3_bind_int(stmt, 1, userId);
         sqlite3_bind_int(stmt, 2, articleId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to dislike article.\n";
+            std::cerr << Strings::DB_DISLIKE_ARTICLE_FAIL;
         }
     }
     finalize(stmt);
@@ -243,7 +244,7 @@ json Database::searchArticles(const std::string &keyword, const std::string &sta
 
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
     {
-        std::cerr << "[Database] Failed to prepare search query.\n";
+        std::cerr << Strings::DB_PREPARE_SEARCH_QUERY_FAIL;
         return result;
     }
 
@@ -299,7 +300,7 @@ json Database::getReactionStats(int articleId) {
             result["dislikes"] = sqlite3_column_int(stmt, 1);
         }
     } else {
-        std::cerr << "Failed to fetch reaction stats.\n";
+        std::cerr << Strings::DB_FETCH_REACTION_STATS_FAIL;
     }
     finalize(stmt);
     return result;
@@ -314,10 +315,10 @@ void Database::addCategory(const std::string& category) {
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_text(stmt, 1, category.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to insert category.\n";
+            std::cerr << Strings::DB_INSERT_CATEGORY_FAIL;
         }
     } else {
-        std::cerr << "Failed to prepare insert category statement.\n";
+        std::cerr << Strings::DB_PREPARE_INSERT_CATEGORY_FAIL;
     }
     finalize(stmt);
 }
@@ -334,7 +335,7 @@ int Database::getCategoryId(const std::string& category) {
             categoryId = sqlite3_column_int(stmt, 0);
         }
     } else {
-        std::cerr << "Failed to prepare getCategoryId.\n";
+        std::cerr << Strings::DB_PREPARE_GET_CATEGORY_ID_FAIL;
     }
     finalize(stmt);
     return categoryId;
@@ -353,7 +354,7 @@ void Database::setCategoryNotificationPreference(int userId, int categoryId, boo
         sqlite3_bind_int(stmt, 2, categoryId);
         sqlite3_bind_int(stmt, 3, isEnabled ? 1 : 0);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to update category preference.\n";
+            std::cerr << Strings::DB_UPDATE_CATEGORY_PREF_FAIL;
         }
     }
     finalize(stmt);
@@ -372,7 +373,7 @@ void Database::setKeywordNotificationPreference(int userId, const std::string& k
         sqlite3_bind_text(stmt, 2, keyword.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_int(stmt, 3, isEnabled ? 1 : 0);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to update keyword preference.\n";
+            std::cerr << Strings::DB_UPDATE_KEYWORD_PREF_FAIL;
         }
     }
     finalize(stmt);
@@ -494,9 +495,8 @@ json Database::getDeliveredNotifications(int userId) {
         ORDER BY n.timestamp DESC
     )";
 
-    std::cout << "[Database] Preparing notification article query for user_id = " << userId << "\n";
+    std::cout << Strings::DB_PREPARE_NOTIFICATION_FETCH_FAIL << userId << "\n";
     int rc = sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr);
-    std::cout << "[Database] Prepared notification article query with rc = " << rc << "\n";
 
     if (rc == SQLITE_OK) {
         sqlite3_bind_int(stmt, 1, userId);
@@ -508,14 +508,13 @@ json Database::getDeliveredNotifications(int userId) {
                 {"description", (const char*)sqlite3_column_text(stmt, 2)},
                 {"url", (const char*)sqlite3_column_text(stmt, 3)},
                 {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : "Uncategorized"},
+                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY},
                 {"read", sqlite3_column_int(stmt, 6) == 1}
             };
             result.push_back(article);
         }
     } else {
-        std::cerr << "[Database] Failed to prepare notification fetch query. Error: "
-                  << sqlite3_errmsg(DBManager::getInstance().getDB()) << "\n";
+        std::cerr << Strings::DB_PREPARE_NOTIFICATION_FETCH_FAIL << sqlite3_errmsg(DBManager::getInstance().getDB()) << "\n";
     }
 
     finalize(stmt);
@@ -545,7 +544,7 @@ json Database::getUnreadNotifications(int userId) {
                 {"description", (const char*)sqlite3_column_text(stmt, 2)},
                 {"url", (const char*)sqlite3_column_text(stmt, 3)},
                 {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : "Uncategorized"},
+                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY},
                 {"read", sqlite3_column_int(stmt, 6) == 1}
             };
             result.push_back(article);
@@ -557,7 +556,7 @@ json Database::getUnreadNotifications(int userId) {
 
 void Database::insertNotification(int userId, int articleId, const std::string& title, const std::string& message) {
     sqlite3_stmt* stmt;
-    std::cout << "[Database] Inserting notification for user " << userId << " and articleId " << articleId << ": " << title << " and the message is : " << message << " (at line " << __LINE__ << ")\n";
+    std::cout << Strings::DB_INSERTING_NOTIFICATION << userId << " " << Strings::DB_AND_ARTICLE_ID << " " << articleId << ": " << title << " " << Strings::DB_AND_MESSAGE_IS << " " << message << " " << Strings::DB_AT_LINE << " " << __LINE__ << ")\n";
     const char* query = R"(
         INSERT INTO notifications (user_id, article_id, title, message, read, timestamp)
         VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
@@ -568,7 +567,7 @@ void Database::insertNotification(int userId, int articleId, const std::string& 
         sqlite3_bind_text(stmt, 3, title.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 4, message.c_str(), -1, SQLITE_TRANSIENT);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "[Database] Failed to insert notification for user " << userId << ".\n";
+            std::cerr << Strings::DB_INSERT_NOTIFICATION_FAIL << userId << ".\n";
         }
     }
     finalize(stmt);
@@ -613,8 +612,8 @@ void Database::notifyUsersIfMatched(const std::string& title, const std::string&
                 sqlite3_bind_int(existsStmt, 1, userId);
                 sqlite3_bind_text(existsStmt, 2, title.c_str(), -1, SQLITE_TRANSIENT);
                 if (sqlite3_step(existsStmt) != SQLITE_ROW) {
-                    std::string message = "New article in category: " + category;
-                    std::cout << message << "\n";
+                    std::string message = Strings::DB_NEW_ARTICLE_CATEGORY + category;
+                    std::cout << Strings::DB_NOTIFY_CALLED << category << "\n";
                     insertNotification(userId, articleId, title, message);
                 }
             }
@@ -636,8 +635,8 @@ void Database::notifyUsersIfMatched(const std::string& title, const std::string&
             std::string keyword = (const char*)sqlite3_column_text(kwStmt, 1);
 
             if (title.find(keyword) != std::string::npos || content.find(keyword) != std::string::npos) {
-                std::string message = "New article matched keyword: " + keyword;
-                std::cout << message << "\n";
+                std::string message = Strings::DB_NEW_ARTICLE_KEYWORD + keyword;
+                std::cout << Strings::DB_NOTIFY_CALLED << keyword << "\n";
                 insertNotification(userId, articleId, title, message);
             }
         }
@@ -705,7 +704,7 @@ void Database::updateExternalServerApiKey(int serverId, const std::string& newAp
         sqlite3_bind_text(stmt, 1, newApiKey.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_int(stmt, 2, serverId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to update external server API key.\n";
+            std::cerr << Strings::DB_FAILED_UPDATE_EXTERNAL_SERVER_API_KEY;
         }
     }
     finalize(stmt);
@@ -722,7 +721,7 @@ void Database::updateExternalServerStatus(int serverId, const std::string& statu
         sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_int(stmt, 2, serverId);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "Failed to update server status.\n";
+            std::cerr << Strings::DB_FAILED_UPDATE_SERVER_STATUS;
         }
     }
     finalize(stmt);
@@ -740,7 +739,7 @@ void Database::updateExternalServerStatusByName(const std::string& serverName, c
         sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 2, serverName.c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(stmt) != SQLITE_DONE) {
-            std::cerr << "[Database] Failed to update server status by name.\n";
+            std::cerr << Strings::DB_FAILED_UPDATE_SERVER_STATUS_BY_NAME;
         }
     }
     finalize(stmt);
@@ -775,8 +774,8 @@ bool Database::authenticateUser(const std::string& email, const std::string& pas
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_text(stmt, 1, email.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_text(stmt, 2, password.c_str(), -1, SQLITE_STATIC);
-        std::cout << "Value of email: " << email << std::endl;
-        std::cout << "Value of password: " << password << std::endl;
+        std::cout << Strings::DB_VALUE_OF_EMAIL << email << std::endl;
+        std::cout << Strings::DB_VALUE_OF_PASSWORD << password << std::endl;
         if (sqlite3_step(stmt) == SQLITE_ROW){
             userId = sqlite3_column_int(stmt, 0);
             role = (const char*)sqlite3_column_text(stmt, 1);
@@ -801,7 +800,7 @@ bool Database::registerUser(const std::string& username, const std::string& emai
         if (sqlite3_step(stmt) == SQLITE_DONE) {
             success = true;
         } else {
-            std::cerr << "Failed to register user.\n";
+            std::cerr << Strings::DB_FAILED_REGISTER_USER;
         }
     }
     finalize(stmt);
@@ -818,7 +817,7 @@ void Database::createDefaultAdmin() {
     )";
     if (sqlite3_prepare_v2(db, checkQuery, -1, &stmt, nullptr) == SQLITE_OK) {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-            std::cout << "[Database] Default admin already exists.\n";
+            std::cout << Strings::DB_DEFAULT_ADMIN_EXISTS;
             sqlite3_finalize(stmt);
             return;
         }
@@ -834,10 +833,10 @@ void Database::createDefaultAdmin() {
     char* errMsg = nullptr;
     int rc = sqlite3_exec(db, insertQuery, nullptr, nullptr, &errMsg);
     if (rc != SQLITE_OK) {
-        std::cerr << "[Database] Failed to create default admin: " << errMsg << "\n";
+        std::cerr << Strings::DB_FAILED_CREATE_ADMIN << errMsg << "\n";
         sqlite3_free(errMsg);
     } else {
-        std::cout << "[Database] Default admin created: headmaster@news.com / headmaster1223\n";
+        std::cout << Strings::DB_ADMIN_CREATED;
     }
 }
 
@@ -853,7 +852,7 @@ void Database::storeArticle(const json& article) {
         sqlite3_bind_text(checkStmt, 1, article["url"].get<std::string>().c_str(), -1, SQLITE_STATIC);
         if (sqlite3_step(checkStmt) == SQLITE_ROW) {
             sqlite3_finalize(checkStmt);
-            std::cout << "[Database] Duplicate article skipped: " << article["url"] << "\n";
+            std::cout << Strings::DB_DUPLICATE_ARTICLE_SKIPPED << article["url"] << "\n";
             return;
         }
     }
@@ -893,26 +892,24 @@ void Database::storeArticle(const json& article) {
         sqlite3_bind_text(insertStmt, 10, source.c_str(), -1, SQLITE_TRANSIENT);
 
         
-         std::cout << "[Database] Article inserted: " << article.value("title", "No Title")
-              << " (at line " << __LINE__ << ")\n";
+         std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
 
         if (sqlite3_step(insertStmt) != SQLITE_DONE) {
             std::string err = sqlite3_errmsg(db);
             if (err.find("UNIQUE constraint failed") != std::string::npos) {
-                std::cout << "[Database] Duplicate article: " << article["url"] << "\n";
+                std::cout << Strings::DB_DUPLICATE_ARTICLE << article["url"] << "\n";
             } else {
-                std::cerr << "[Database] Failed to insert article: " << err << "\n";
+                std::cerr << Strings::DB_FAILED_INSERT_ARTICLE << err << "\n";
                 sqlite3_finalize(insertStmt);
                 return;
             }
         }
     } else {
-        std::cerr << "[Database] Failed to prepare insert statement.\n";
+        std::cerr << Strings::DB_FAILED_PREPARE_INSERT;
         return;
     }
     sqlite3_finalize(insertStmt);
-    std::cout << "[Database] Article inserted: " << article.value("title", "No Title")
-              << " (at line " << __LINE__ << ")\n";
+    std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
     int articleId = sqlite3_last_insert_rowid(db);
 
     addCategory(category); 
@@ -927,15 +924,14 @@ void Database::storeArticle(const json& article) {
             sqlite3_bind_int(mapStmt, 1, articleId);
             sqlite3_bind_int(mapStmt, 2, categoryId);
             if (sqlite3_step(mapStmt) != SQLITE_DONE) {
-                std::cerr << "[Database] Failed to map article to category.\n";
+                std::cerr << Strings::DB_FAILED_MAP_ARTICLE_CATEGORY;
             }
         }
         sqlite3_finalize(mapStmt);
     }
 
-    std::cout << "[Database] Notify Called for category " << category << "\n";
+    std::cout << Strings::DB_NOTIFY_CALLED << category << "\n";
     notifyUsersIfMatched(title, content, category, articleId);
 
-     std::cout << "[Database] Article inserted: " << article.value("title", "No Title")
-              << " (at line " << __LINE__ << ")\n";
+     std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
 }

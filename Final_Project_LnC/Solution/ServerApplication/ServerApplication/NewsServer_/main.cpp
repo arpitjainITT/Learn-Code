@@ -11,6 +11,7 @@
 #include "database/DBManager.hpp"
 #include "database/DataBase.hpp"
 #include "scheduler/FetchScheduler.hpp"
+#include "utils/Strings.hpp"
 
 using namespace Pistache;
 
@@ -52,7 +53,7 @@ void handleSignal(int signal) {
         return; // Already shutting down
     }
 
-    std::cout << "\nShutting down server peacefully and gracefully on your order.....\n";
+    std::cout << Strings::SERVER_SHUTDOWN;
 
     if (globalApp) {
         globalApp->shutdown(); // STOP HTTP endpoint
@@ -64,20 +65,21 @@ void handleSignal(int signal) {
 }
 
 int main() {
-    if (!DBManager::getInstance().initializeDB("../../../../data/news9.db")) {
-        std::cerr << "Failed to initialize database.\n";
+    if (!DBManager::getInstance().initializeDB(Strings::DB_PATH)) {
+        std::cerr << Strings::DB_INIT_FAIL;
         return 1;
     }
 
     //Creating admin on the start of application
+    std::cout << Strings::CREATE_ADMIN;
     Database::createDefaultAdmin();
     
     scheduler.start();
 
-    Pistache::Port port(9080);
+    Pistache::Port port(Strings::SERVER_PORT);
     Pistache::Address addr(Pistache::Ipv4::any(), port);
 
-    std::cout << "Starting server at http://localhost:" << port << " ..." << std::endl;
+    std::cout << Strings::SERVER_START << Strings::SERVER_URL << Strings::SERVER_PORT << " ..." << std::endl;
 
     globalApp = std::make_shared<ServerApp>(addr);
     globalApp->init(4);

@@ -1,6 +1,7 @@
 #include "AdminService.hpp"
 #include "../database/Database.hpp"
 #include <iostream>
+#include "../utils/Strings.hpp"
 
 using json = nlohmann::json;
 
@@ -17,7 +18,7 @@ bool AdminService::updateExternalServerApiKey(int serverId, const std::string& n
         Database::updateExternalServerApiKey(serverId, newKey);
         return true;
     } catch (...) {
-        std::cerr << "[AdminService] Failed to update API key.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FAILED_UPDATE_API_KEY;
         return false;
     }
 }
@@ -27,7 +28,7 @@ bool AdminService::updateExternalServerStatus(int serverId, const std::string& n
         Database::updateExternalServerStatus(serverId, newStatus);
         return true;
     } catch (...) {
-        std::cerr << "[AdminService] Failed to update server status.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FAILED_UPDATE_STATUS;
         return false;
     }
 }
@@ -37,7 +38,7 @@ bool AdminService::updateExternalServerStatus(const std::string& serverName, con
         Database::updateExternalServerStatusByName(serverName, status);
         return true;
     } catch (...) {
-        std::cerr << "[AdminService] Failed to update server status by name.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FAILED_UPDATE_STATUS_BY_NAME;
         return false;
     }
 }
@@ -47,7 +48,7 @@ bool AdminService::addCategory(const std::string& category) {
         Database::addCategory(category);
         return true;
     } catch (...) {
-        std::cerr << "[AdminService] Failed to add category.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FAILED_ADD_CATEGORY;
         return false;
     }
 }

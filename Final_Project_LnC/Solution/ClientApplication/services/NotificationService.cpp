@@ -1,6 +1,7 @@
 #include "NotificationService.h"
 #include "../utils/HttpClient.h"
 #include "../constants/APIEndpoints.h"
+#include "../constants/Strings.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
@@ -48,7 +49,7 @@ NotificationPreferences NotificationService::getPreferences(int userId) {
             }            
         }
     } catch (...) {
-        std::cerr << "Failed to fetch notification preferences.\n";
+        std::cerr << Strings::NOTIF_SERVICE_FETCH_PREFS_FAIL;
     }
 
     return prefs;
@@ -67,14 +68,14 @@ std::vector<Notification> NotificationService::getNotifications(int userId) {
             n.id = item["id"];
             n.title = item["title"];
             n.message = item["description"];
-            n.category = item.value("category", "General");
+            n.category = item.value("category", Strings::NOTIF_SERVICE_DEFAULT_CATEGORY);
             n.url = item["url"];
             n.source = item["source"];
             n.read = item.value("read", false);
             notifications.push_back(n);
         }
     } catch (...) {
-        std::cerr << "Failed to fetch notifications.\n";
+        std::cerr << Strings::NOTIF_SERVICE_FETCH_NOTIFS_FAIL;
     }
 
     return notifications;
@@ -85,6 +86,6 @@ void NotificationService::markNotificationAsRead(int notificationId) {
     try {
         HttpClient::put(endpoint, ""); 
     } catch (...) {
-        std::cerr << "Failed to mark notification as read.\n";
+        std::cerr << Strings::NOTIF_SERVICE_MARK_READ_FAIL;
     }
 }

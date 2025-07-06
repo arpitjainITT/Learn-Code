@@ -5,14 +5,18 @@
 #include "../utils/ConsoleUtils.h"
 #include "../models/User.h"
 #include "../utils/Validator.h"
+#include "../constants/Strings.h"
 #include <iostream>
 
 void LoginMenu::show() {
     int choice;
     do {
         // ConsoleUtils::clear();
-        std::cout << "=== News Aggregator ===\n";
-        std::cout << "1. Login\n2. Sign Up\n3. Exit\nChoice: ";
+        std::cout << Strings::LOGIN_MENU_TITLE;
+        std::cout << Strings::LOGIN_MENU_LOGIN;
+        std::cout << Strings::LOGIN_MENU_SIGNUP;
+        std::cout << Strings::LOGIN_MENU_EXIT;
+        std::cout << Strings::LOGIN_MENU_CHOICE;
         std::cin >> choice;
 
         std::string email, password, username;
@@ -20,49 +24,49 @@ void LoginMenu::show() {
 
         switch (choice) {
             case 1:
-                std::cout << "Enter email: ";
+                std::cout << Strings::LOGIN_MENU_ENTER_EMAIL;
                 std::cin >> email;
-                std::cout << "Enter password: ";
+                std::cout << Strings::LOGIN_MENU_ENTER_PASSWORD;
                 std::cin >> password;
 
                 if (AuthService::login(email, password, user)) {
                     if (user.getRole() == "admin") AdminMenu(user).display();
                     else UserMenu(user).display();
                 } else {
-                    std::cout << "Login failed.\n";
+                    std::cout << Strings::LOGIN_MENU_LOGIN_FAILED;
                 }
                 break;
 
             case 2:
-                std::cout << "Enter username: ";
+                std::cout << Strings::LOGIN_MENU_ENTER_USERNAME;
                 std::cin >> username;
-                std::cout << "Enter email: ";
+                std::cout << Strings::LOGIN_MENU_ENTER_EMAIL;
                 std::cin >> email;
-                std::cout << "Enter password: ";
+                std::cout << Strings::LOGIN_MENU_ENTER_PASSWORD;
                 std::cin >> password;
 
                 if (!Validator::isValidEmail(email)) {
-                    std::cout << "Invalid email format.\n";
+                    std::cout << Strings::LOGIN_MENU_INVALID_EMAIL;
                     break;
                 }
                 if (!Validator::isValidPassword(password)) {
-                    std::cout << "Password must be at least 6 characters.\n";
+                    std::cout << Strings::LOGIN_MENU_INVALID_PASSWORD;
                     break;
                 }
 
                 if (AuthService::signup(username, email, password)) {
-                    std::cout << "Signup successful! Please login.\n";
+                    std::cout << Strings::LOGIN_MENU_SIGNUP_SUCCESS;
                 } else {
-                    std::cout << "Signup failed.\n";
+                    std::cout << Strings::LOGIN_MENU_SIGNUP_FAILED;
                 }
                 break;
 
             case 3:
-                std::cout << "Exiting...\n";
+                std::cout << Strings::LOGIN_MENU_EXITING;
                 break;
 
             default:
-                std::cout << "Invalid choice.\n";
+                std::cout << Strings::LOGIN_MENU_INVALID_CHOICE;
         }
 
         ConsoleUtils::pause();

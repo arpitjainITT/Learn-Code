@@ -2,6 +2,7 @@
 #include "../services/UserService.hpp"
 #include <pistache/http.h>
 #include <nlohmann/json.hpp>
+#include "../utils/Strings.hpp"
 
 using namespace Pistache;
 using json = nlohmann::json;
@@ -24,8 +25,8 @@ Rest::Route::Result loginHandler(const Rest::Request& req, Http::ResponseWriter 
         };
         response.send(Http::Code::Ok, res.dump());
     } else {
-        std::cout << "Login failed - Email: " << email << ", UserId: " << userId << ", Role: " << role << std::endl;
-        response.send(Http::Code::Unauthorized, R"({"status": "invalid credentials"})");
+        std::cout << Strings::ROUTE_LOGIN_FAILED_LOG << email << ", UserId: " << userId << ", Role: " << role << std::endl;
+        response.send(Http::Code::Unauthorized, Strings::ROUTE_LOGIN_INVALID_CREDENTIALS);
     }
     return Rest::Route::Result::Ok;
 }
@@ -39,9 +40,9 @@ Rest::Route::Result signupHandler(const Rest::Request& req, Http::ResponseWriter
 
     bool success = UserService::signup(username, email, password);
     if (success) {
-        response.send(Http::Code::Created, R"({"status": "user registered"})");
+        response.send(Http::Code::Created, Strings::ROUTE_SIGNUP_USER_REGISTERED);
     } else {
-        response.send(Http::Code::Bad_Request, R"({"status": "registration failed"})");
+        response.send(Http::Code::Bad_Request, Strings::ROUTE_SIGNUP_FAILED);
     }
     return Rest::Route::Result::Ok;
 }

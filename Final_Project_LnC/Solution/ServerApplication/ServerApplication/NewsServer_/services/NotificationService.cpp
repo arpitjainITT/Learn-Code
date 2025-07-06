@@ -1,6 +1,7 @@
 #include "NotificationService.hpp"
 #include "../database/Database.hpp"
 #include <iostream>
+#include "../utils/Strings.hpp"
 
 using json = nlohmann::json;
 
@@ -13,7 +14,7 @@ void NotificationService::setCategoryPreference(int userId, const std::string& c
             Database::addNotificationsForCategory(userId, category);
         }
     } else {
-        std::cerr << "[NotificationService] Failed to resolve category: " << category << "\n";
+        std::cerr << Strings::NOTIF_SERVICE_FAILED_RESOLVE_CATEGORY << category << "\n";
     }
 }
 

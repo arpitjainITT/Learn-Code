@@ -1,4 +1,5 @@
 #include "ConsoleUtils.h"
+#include "../constants/Strings.h"
 #include <cstdlib>
 
 void ConsoleUtils::clear() {
@@ -16,7 +17,7 @@ int ConsoleUtils::getValidatedInput(int min, int max) {
         if (std::cin.fail() || choice < min || choice > max) {
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Try again: ";
+            std::cout << Strings::UTILS_INVALID_INPUT;
         } else {
             return choice;
         }
@@ -24,7 +25,7 @@ int ConsoleUtils::getValidatedInput(int min, int max) {
 }
 
 void ConsoleUtils::pause() {
-    std::cout << "Press Enter to continue...";
+    std::cout << Strings::UTILS_PRESS_ENTER;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::cin.get();  
 }

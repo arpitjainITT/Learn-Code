@@ -1,6 +1,7 @@
 #include "AdminService.h"
 #include "../utils/HttpClient.h"
 #include "../constants/APIEndpoints.h"
+#include "../constants/Strings.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
@@ -22,7 +23,7 @@ std::vector<ExternalServer> AdminService::getAllServers() {
             servers.push_back(s);
         }
     } catch (...) {
-        std::cerr << "Failed to fetch servers.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FETCH_SERVERS_FAIL;
     }
 
     return servers;
@@ -39,7 +40,7 @@ ExternalServer AdminService::getServerDetails(int id) {
         server.apiKey = item["api_key"];
         server.lastAccessed = item["last_accessed"];
     } catch (...) {
-        std::cerr << "Failed to fetch server details.\n";
+        std::cerr << Strings::ADMIN_SERVICE_FETCH_SERVER_DETAILS_FAIL;
     }
 
     return server;

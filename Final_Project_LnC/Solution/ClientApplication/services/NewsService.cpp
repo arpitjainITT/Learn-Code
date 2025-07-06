@@ -1,6 +1,7 @@
 #include "NewsService.h"
 #include "../utils/HttpClient.h"
 #include "../constants/APIEndpoints.h"
+#include "../constants/Strings.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
@@ -33,14 +34,14 @@ std::vector<Article> NewsService::getArticles(const std::string& category,
             a.id = item.value("id", 0);
             a.title = item.value("title", "");
             a.description = item.value("description", "");
-            a.category = item.value("category", "Uncategorized");
+            a.category = item.value("category", Strings::NEWS_SERVICE_DEFAULT_CATEGORY);
             a.source = item.value("source", "");
             a.url = item.value("url", "");
             a.createdAt = item.value("created_at", "");
             articles.push_back(a);
         }
     } catch (...) {
-        std::cerr << "Failed to parse article list.\n";
+        std::cerr << Strings::NEWS_SERVICE_PARSE_LIST_FAIL;
     }
 
     return articles;
@@ -70,14 +71,14 @@ std::vector<Article> NewsService::searchArticles(const std::string& keyword,
             a.id = item.value("id", 0);
             a.title = item.value("title", "");
             a.description = item.value("description", "");
-            a.category = item.value("category", "Uncategorized");
+            a.category = item.value("category", Strings::NEWS_SERVICE_DEFAULT_CATEGORY);
             a.source = item.value("source", "");
             a.url = item.value("url", "");
             a.createdAt = item.value("created_at", "");
             articles.push_back(a);
         }
     } catch (...) {
-        std::cerr << "Failed to search articles.\n";
+        std::cerr << Strings::NEWS_SERVICE_SEARCH_FAIL;
     }
 
     return articles;

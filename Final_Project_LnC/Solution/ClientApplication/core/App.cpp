@@ -4,6 +4,7 @@
 #include "../ui/AdminMenu.h"
 #include "../services/AuthService.h"
 #include "../utils/ConsoleUtils.h"
+#include "../constants/Strings.h"
 
 #include <iostream>
 #include <string>
@@ -21,31 +22,31 @@ void App::run() {
                 handleSignup();
                 break;
             case 3:
-                std::cout << "Exiting application. Goodbye!\n";
+                std::cout << Strings::APP_EXITING;
                 running = false;
                 break;
             default:
-                std::cout << "Invalid choice.\n";
+                std::cout << Strings::APP_INVALID_CHOICE;
         }
     }
 }
 
 void App::showHomeMenu() {
     // ConsoleUtils::clear();
-    std::cout << "===============================\n";
-    std::cout << " Welcome to News Aggregator\n";
-    std::cout << "===============================\n";
-    std::cout << "1. Login\n";
-    std::cout << "2. Sign up\n";
-    std::cout << "3. Exit\n";
-    std::cout << "Enter choice: ";
+    std::cout << Strings::APP_HOME_SEPARATOR;
+    std::cout << Strings::APP_HOME_WELCOME;
+    std::cout << Strings::APP_HOME_SEPARATOR;
+    std::cout << Strings::APP_HOME_LOGIN;
+    std::cout << Strings::APP_HOME_SIGNUP;
+    std::cout << Strings::APP_HOME_EXIT;
+    std::cout << Strings::APP_HOME_ENTER_CHOICE;
 }
 
 void App::handleLogin() {
     std::string email, password;
-    std::cout << "Email: ";
+    std::cout << Strings::APP_LOGIN_EMAIL;
     std::cin >> email;
-    std::cout << "Password: ";
+    std::cout << Strings::APP_LOGIN_PASSWORD;
     std::cin >> password;
 
     User user;
@@ -56,23 +57,23 @@ void App::handleLogin() {
             showUserMenu(user);
         }
     } else {
-        std::cout << "Login failed. Invalid credentials.\n";
+        std::cout << Strings::APP_LOGIN_FAILED;
     }
 }
 
 void App::handleSignup() {
     std::string username, email, password;
-    std::cout << "Username: ";
+    std::cout << Strings::APP_SIGNUP_USERNAME;
     std::cin >> username;
-    std::cout << "Email: ";
+    std::cout << Strings::APP_SIGNUP_EMAIL;
     std::cin >> email;
-    std::cout << "Password: ";
+    std::cout << Strings::APP_SIGNUP_PASSWORD;
     std::cin >> password;
 
     if (AuthService::signup(username, email, password)) {
-        std::cout << "User registered successfully. Please login.\n";
+        std::cout << Strings::APP_SIGNUP_SUCCESS;
     } else {
-        std::cout << "Signup failed. Email may already exist.\n";
+        std::cout << Strings::APP_SIGNUP_FAILED;
     }
 }
 

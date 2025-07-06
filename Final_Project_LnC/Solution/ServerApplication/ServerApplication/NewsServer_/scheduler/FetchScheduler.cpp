@@ -8,6 +8,7 @@
 #include "../utils/HttpClient.hpp"
 #include "../services/ArticleService.hpp"
 #include "../services/AdminService.hpp"
+#include "../utils/Strings.hpp"
 
 using namespace std::chrono_literals;
 using json = nlohmann::json;
@@ -35,7 +36,7 @@ void FetchScheduler::stop() {
 
 void FetchScheduler::run() {
     while (running) {
-        std::cout << "[FetchScheduler] Fetching articles...\n";
+        std::cout << Strings::FETCH_SCHEDULER_FETCHING;
         fetchAndStoreArticles();
         std::unique_lock<std::mutex> lock(mtx);
         cv.wait_for(lock, 180min, [this]() { return !running; }); // configurable interval that wait for 3 hours or close if interrupted
@@ -51,43 +52,43 @@ void FetchScheduler::fetchAndStoreArticles() {
     std::shared_ptr<INewsApiAdapter> fallbackAdapter = std::make_shared<TheNewsApiAdapter>();
 
     try {
-        std::cout << "[FetchScheduler] Trying primary source: NewsAPI.org...\n";
+        std::cout << Strings::FETCH_SCHEDULER_TRY_PRIMARY;
         auto articles = primaryAdapter->fetchArticles();
         if (!articles.empty()) {
-            std::cout << "[FetchScheduler] Articles fetched from NewsAPI.org\n";
+            std::cout << Strings::FETCH_SCHEDULER_PRIMARY_FETCHED;
 
             for (const auto& article : articles) {
-                std::cout << "[FetchScheduler] Storing article: " << article.value("title", "No Title") << " from source: " << article.value("source", "Unknown") << "\n";
+                std::cout << Strings::FETCH_SCHEDULER_STORING_ARTICLE << article.value("title", "No Title") << Strings::FETCH_SCHEDULER_FROM_SOURCE << article.value("source", "Unknown") << "\n";
                 ArticleService::storeArticle(article);
             }
 
             AdminService::updateExternalServerStatus(primaryAdapter->getSourceName(), "active");
             return;
         } else {
-            std::cerr << "[FetchScheduler] NewsAPI.org returned no articles.\n";
+            std::cerr << Strings::FETCH_SCHEDULER_PRIMARY_NO_ARTICLES;
         }
     } catch (const std::exception& ex) {
-        std::cerr << "[FetchScheduler] NewsAPI.org failed: " << ex.what() << "\n";
+        std::cerr << Strings::FETCH_SCHEDULER_PRIMARY_FAILED << ex.what() << "\n";
         AdminService::updateExternalServerStatus(primaryAdapter->getSourceName(), "inactive");
     }
 
     try {
-        std::cout << "[FetchScheduler] Trying fallback source: TheNewsAPI.com...\n";
+        std::cout << Strings::FETCH_SCHEDULER_TRY_FALLBACK;
         auto articles = fallbackAdapter->fetchArticles();
         if (!articles.empty()) {
-            std::cout << "[FetchScheduler] Articles fetched from TheNewsAPI.com\n";
+            std::cout << Strings::FETCH_SCHEDULER_FALLBACK_FETCHED;
             
             for (const auto& article : articles) {
-                std::cout << "[FetchScheduler] Storing article: " << article.value("title", "No Title") << " from source: " << article.value("source", "Unknown") << "\n";
+                std::cout << Strings::FETCH_SCHEDULER_STORING_ARTICLE << article.value("title", "No Title") << Strings::FETCH_SCHEDULER_FROM_SOURCE << article.value("source", "Unknown") << "\n";
                 ArticleService::storeArticle(article);
             }
 
             AdminService::updateExternalServerStatus(fallbackAdapter->getSourceName(), "active");
         } else {
-            std::cerr << "[FetchScheduler] TheNewsAPI.com also returned no articles.\n";
+            std::cerr << Strings::FETCH_SCHEDULER_FALLBACK_NO_ARTICLES;
         }
     } catch (const std::exception& ex) {
-        std::cerr << "[FetchScheduler] TheNewsAPI.com failed: " << ex.what() << "\n";
+        std::cerr << Strings::FETCH_SCHEDULER_FALLBACK_FAILED << ex.what() << "\n";
         AdminService::updateExternalServerStatus(fallbackAdapter->getSourceName(), "inactive");
     }
 }

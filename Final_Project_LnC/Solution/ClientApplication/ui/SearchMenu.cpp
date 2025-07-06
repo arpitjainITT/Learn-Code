@@ -1,6 +1,7 @@
 #include "SearchMenu.h"
 #include "../services/NewsService.h"
 #include "../utils/ConsoleUtils.h"
+#include "../constants/Strings.h"
 #include <iostream>
 #include <algorithm>
 
@@ -10,10 +11,10 @@ void SearchMenu::display() {
     bool back = false;
     while (!back) {
         // ConsoleUtils::clear();
-        std::cout << "========== SEARCH ==========\n";
-        std::cout << "1. Search Articles\n";
-        std::cout << "2. Back\n";
-        std::cout << "Enter choice: ";
+        std::cout << Strings::SEARCH_MENU_TITLE;
+        std::cout << Strings::SEARCH_MENU_SEARCH_ARTICLES;
+        std::cout << Strings::SEARCH_MENU_BACK;
+        std::cout << Strings::SEARCH_MENU_ENTER_CHOICE;
         int choice = ConsoleUtils::getValidatedInput(1, 2);
         switch (choice) {
             case 1:
@@ -29,13 +30,13 @@ void SearchMenu::display() {
 void SearchMenu::performSearch() {
     std::string keyword, startDate, endDate, sortBy;
     
-    std::cout << "Enter keyword to search: ";
+    std::cout << Strings::SEARCH_MENU_ENTER_KEYWORD;
     std::cin >> keyword;
-    std::cout << "Enter start date (YYYY-MM-DD): ";
+    std::cout << Strings::SEARCH_MENU_ENTER_START_DATE;
     std::cin >> startDate;
-    std::cout << "Enter end date (YYYY-MM-DD): ";
+    std::cout << Strings::SEARCH_MENU_ENTER_END_DATE;
     std::cin >> endDate;
-    std::cout << "Sort by (likes/dislikes/none): ";
+    std::cout << Strings::SEARCH_MENU_SORT_BY;
     std::cin >> sortBy;
 
     if (sortBy != "likes" && sortBy != "dislikes") {
@@ -45,24 +46,24 @@ void SearchMenu::performSearch() {
     auto results = NewsService::searchArticles(keyword, startDate, endDate, sortBy);
 
     if (results.empty()) {
-        std::cout << "No matching articles found.\n";
+        std::cout << Strings::SEARCH_MENU_NO_MATCH;
         ConsoleUtils::pause();
         return;
     }
 
-    std::cout << "\n=== Search Results ===\n";
+    std::cout << Strings::SEARCH_MENU_RESULTS_TITLE;
     for (size_t i = 0; i < results.size(); ++i) {
         std::cout << "[" << (i + 1) << "] " << results[i].title << "\n"
-                  << "   Category: " << results[i].category << "\n"
-                  << "   Source: " << results[i].source << "\n"
-                  << "   Published At: " << results[i].createdAt << "\n";
+                  << Strings::SEARCH_MENU_CATEGORY << results[i].category << "\n"
+                  << Strings::SEARCH_MENU_SOURCE << results[i].source << "\n"
+                  << Strings::SEARCH_MENU_PUBLISHED_AT << results[i].createdAt << "\n";
     }
 
-    std::cout << "\nEnter article number to save (0 to skip): ";
+    std::cout << Strings::SEARCH_MENU_ENTER_ARTICLE_NUMBER;
     int choice = ConsoleUtils::getValidatedInput(0, results.size());
     if (choice > 0) {
         NewsService::saveArticle(currentUser.getId(), results[choice - 1].id);
-        std::cout << "Article saved.\n";
+        std::cout << Strings::SEARCH_MENU_ARTICLE_SAVED;
     }
 
     ConsoleUtils::pause();

@@ -2,6 +2,7 @@
 #include "../services/ArticleService.hpp"
 #include <pistache/http.h>
 #include <nlohmann/json.hpp>
+#include "../utils/Strings.hpp"
 
 using namespace Pistache;
 using json = nlohmann::json;
@@ -36,7 +37,7 @@ Rest::Route::Result saveArticleHandler(const Rest::Request& req, Http::ResponseW
     int articleId = body["article_id"];
 
     ArticleService::saveArticle(userId, articleId);
-    response.send(Http::Code::Ok, "Article saved.");
+    response.send(Http::Code::Ok, Strings::ROUTE_ARTICLE_SAVED);
     return Rest::Route::Result::Ok;
 }
 
@@ -46,7 +47,7 @@ Rest::Route::Result deleteSavedArticleHandler(const Rest::Request& req, Http::Re
     int userId = body.value("userId", -1);
     int articleId = body.value("articleId", -1);
     ArticleService::deleteSavedArticle(userId, articleId);
-    response.send(Http::Code::Ok, "Article unsaved.");
+    response.send(Http::Code::Ok, Strings::ROUTE_ARTICLE_UNSAVED);
     return Rest::Route::Result::Ok;
 }
 
@@ -64,7 +65,7 @@ Rest::Route::Result likeArticleHandler(const Rest::Request& req, Http::ResponseW
     auto body = json::parse(req.body());
     int userId = body["user_id"];
     ArticleService::likeArticle(userId, articleId);
-    response.send(Http::Code::Ok, "Article liked.");
+    response.send(Http::Code::Ok, Strings::ROUTE_ARTICLE_LIKED);
     return Rest::Route::Result::Ok;
 }
 
@@ -74,7 +75,7 @@ Rest::Route::Result dislikeArticleHandler(const Rest::Request& req, Http::Respon
     auto body = json::parse(req.body());
     int userId = body["user_id"];
     ArticleService::dislikeArticle(userId, articleId);
-    response.send(Http::Code::Ok, "Article disliked.");
+    response.send(Http::Code::Ok, Strings::ROUTE_ARTICLE_DISLIKED);
     return Rest::Route::Result::Ok;
 }
 

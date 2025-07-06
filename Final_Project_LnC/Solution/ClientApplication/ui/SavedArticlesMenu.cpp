@@ -1,6 +1,7 @@
 #include "SavedArticlesMenu.h"
 #include "../services/SavedArticleService.h"
 #include "../utils/ConsoleUtils.h"
+#include "../constants/Strings.h"
 #include <iostream>
 #include <vector>
 
@@ -10,11 +11,11 @@ void SavedArticlesMenu::display() {
     bool back = false;
     while (!back) {
         // ConsoleUtils::clear();
-        std::cout << "==== SAVED ARTICLES ====\n";
-        std::cout << "1. View Saved Articles\n";
-        std::cout << "2. Delete Article\n";
-        std::cout << "3. Back\n";
-        std::cout << "Enter your choice: ";
+        std::cout << Strings::SAVED_ARTICLES_TITLE;
+        std::cout << Strings::VIEW_SAVED_ARTICLES;
+        std::cout << Strings::DELETE_ARTICLE;
+        std::cout << Strings::BACK;
+        std::cout << Strings::ENTER_CHOICE;
 
         int choice = ConsoleUtils::getValidatedInput(1, 3);
         switch (choice) {
@@ -22,7 +23,7 @@ void SavedArticlesMenu::display() {
                 listSavedArticles();
                 break;
             case 2: {
-                std::cout << "Enter Article ID to delete: ";
+                std::cout << Strings::ENTER_ARTICLE_ID_TO_DELETE;
                 int id;
                 std::cin >> id;
                 deleteArticle(id);
@@ -32,7 +33,7 @@ void SavedArticlesMenu::display() {
                 back = true;
                 break;
             default:
-                std::cout << "Invalid choice.\n";
+                std::cout << Strings::INVALID_CHOICE;
         }
         ConsoleUtils::pause();
     }
@@ -41,21 +42,21 @@ void SavedArticlesMenu::display() {
 void SavedArticlesMenu::listSavedArticles() {
     auto articles = SavedArticleService::getSavedArticles(currentUser.getId());
     if (articles.empty()) {
-        std::cout << "No saved articles.\n";
+        std::cout << Strings::NO_SAVED_ARTICLES;
         return;
     }
 
     for (const auto& a : articles) {
-        std::cout << "\nID: " << a.id << "\n"
-                  << "Title: " << a.title << "\n"
-                  << "Category: " << a.category << "\n"
-                  << "Source: " << a.source << "\n"
-                  << "URL: " << a.url << "\n"
-                  << "Published At: " << a.createdAt << "\n";
+        std::cout << "\n" << Strings::ARTICLE_ID << a.id << "\n"
+                  << Strings::ARTICLE_TITLE << a.title << "\n"
+                  << Strings::ARTICLE_CATEGORY << a.category << "\n"
+                  << Strings::ARTICLE_SOURCE << a.source << "\n"
+                  << Strings::ARTICLE_URL << a.url << "\n"
+                  << Strings::ARTICLE_PUBLISHED_AT << a.createdAt << "\n";
     }
 }
 
 void SavedArticlesMenu::deleteArticle(int articleId) {
     SavedArticleService::deleteSavedArticle(currentUser.getId(), articleId);
-    std::cout << "Article deleted.\n";
+    std::cout << Strings::ARTICLE_DELETED;
 }

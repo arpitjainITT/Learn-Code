@@ -1,4 +1,5 @@
 #include "DBManager.hpp"
+#include "../utils/Strings.hpp"
 #include <iostream>
 
 DBManager::~DBManager() {
@@ -12,7 +13,7 @@ DBManager& DBManager::getInstance() {
 
 bool DBManager::initializeDB(const std::string& dbPath) {
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
-        std::cerr << "Failed to open DB: " << sqlite3_errmsg(db) << std::endl;
+        std::cerr << Strings::DB_OPEN_FAIL << sqlite3_errmsg(db) << std::endl;
         return false;
     }
     return executeSchema();
@@ -152,7 +153,7 @@ bool DBManager::executeSchema() {
     char* errMsg = nullptr;
     int rc = sqlite3_exec(db, schema, nullptr, nullptr, &errMsg);
     if (rc != SQLITE_OK) {
-        std::cerr << "Schema creation failed: " << errMsg << std::endl;
+        std::cerr << Strings::DB_SCHEMA_FAIL << errMsg << std::endl;
         sqlite3_free(errMsg);
         return false;
     }

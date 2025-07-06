@@ -1,6 +1,7 @@
 #include "AuthService.h"
 #include "../utils/HttpClient.h"
 #include "../constants/APIEndpoints.h"
+#include "../constants/Strings.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
@@ -24,7 +25,7 @@ bool AuthService::login(const std::string& email, const std::string& password, U
             return true;
         }        
     } catch (...) {
-        std::cerr << "Login failed. Response: " << responseStr << "\n";
+        std::cerr << Strings::AUTH_SERVICE_LOGIN_FAIL << responseStr << "\n";
     }
 
     return false;
@@ -43,7 +44,7 @@ bool AuthService::signup(const std::string& username, const std::string& email, 
         response = json::parse(responseStr);
         return response["status"] == "user registered";
     } catch (...) {
-        std::cerr << "Signup failed. Response: " << responseStr << "\n";
+        std::cerr << Strings::AUTH_SERVICE_SIGNUP_FAIL << responseStr << "\n";
         return false;
     }
 }

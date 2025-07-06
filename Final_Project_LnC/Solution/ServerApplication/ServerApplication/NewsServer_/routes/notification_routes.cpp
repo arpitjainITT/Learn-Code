@@ -3,6 +3,7 @@
 #include "../database/Database.hpp"
 #include <pistache/http.h>
 #include <nlohmann/json.hpp>
+#include "../utils/Strings.hpp"
 
 using namespace Pistache;
 using json = nlohmann::json;
@@ -15,7 +16,7 @@ Rest::Route::Result setCategoryPrefHandler(const Rest::Request& req, Http::Respo
     bool enabled = body["enabled"];
     
     NotificationService::setCategoryPreference(userId, category, enabled);
-    response.send(Http::Code::Ok, "Category preference updated.");
+    response.send(Http::Code::Ok, Strings::ROUTE_CATEGORY_PREF_UPDATED);
     return Rest::Route::Result::Ok;
 }
 
@@ -27,7 +28,7 @@ Rest::Route::Result setKeywordPrefHandler(const Rest::Request& req, Http::Respon
     bool enabled = body["enabled"];
     
     NotificationService::setKeywordPreference(userId, keyword, enabled);
-    response.send(Http::Code::Ok, "Keyword preference updated.");
+    response.send(Http::Code::Ok, Strings::ROUTE_KEYWORD_PREF_UPDATED);
     return Rest::Route::Result::Ok;
 }
 
@@ -50,7 +51,7 @@ Rest::Route::Result getDeliveredNotificationsHandler(const Rest::Request& req, H
 Rest::Route::Result markNotificationsAsReadHandler(const Rest::Request& req, Http::ResponseWriter response) {
     int userId = req.param(":userId").as<int>();
     Database::markNotificationsAsRead(userId);
-    response.send(Http::Code::Ok, "Notifications marked as read.");
+    response.send(Http::Code::Ok, Strings::ROUTE_NOTIFICATIONS_MARKED_READ);
     return Rest::Route::Result::Ok;
 }
 

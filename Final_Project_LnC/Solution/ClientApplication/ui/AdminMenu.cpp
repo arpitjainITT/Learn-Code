@@ -1,6 +1,7 @@
 #include "AdminMenu.h"
 #include "../services/AdminService.h"
 #include "../utils/ConsoleUtils.h"
+#include "../constants/Strings.h"
 #include <iostream>
 
 AdminMenu::AdminMenu(const User& user) : currentUser(user) {}
@@ -9,14 +10,14 @@ void AdminMenu::display() {
     bool back = false;
     while (!back) {
         // ConsoleUtils::clear();
-        std::cout << "========== ADMIN PANEL ==========\n";
-        std::cout << "1. View External Servers\n";
-        std::cout << "2. View Server Details\n";
-        std::cout << "3. Update Server API Key\n";
-        std::cout << "4. Update Server Status\n";
-        std::cout << "5. Add New Category\n";
-        std::cout << "6. Logout\n";
-        std::cout << "Enter your choice: ";
+        std::cout << Strings::ADMIN_MENU_TITLE;
+        std::cout << Strings::ADMIN_MENU_VIEW_SERVERS;
+        std::cout << Strings::ADMIN_MENU_VIEW_DETAILS;
+        std::cout << Strings::ADMIN_MENU_UPDATE_KEY;
+        std::cout << Strings::ADMIN_MENU_UPDATE_STATUS;
+        std::cout << Strings::ADMIN_MENU_ADD_CATEGORY;
+        std::cout << Strings::ADMIN_MENU_LOGOUT;
+        std::cout << Strings::ADMIN_MENU_ENTER_CHOICE;
 
         int choice = ConsoleUtils::getValidatedInput(1, 6);
         switch (choice) {
@@ -34,55 +35,55 @@ void AdminMenu::display() {
 void AdminMenu::listExternalServers() {
     auto servers = AdminService::getAllServers();
     for (const auto& server : servers) {
-        std::cout << "ID: " << server.id
-                  << " | Name: " << server.name
-                  << " | Status: " << server.status
-                  << " | Last Accessed: " << server.lastAccessed << "\n";
+        std::cout << Strings::ADMIN_MENU_ID << server.id
+                  << " | " << Strings::ADMIN_MENU_NAME << server.name
+                  << " | " << Strings::ADMIN_MENU_STATUS << server.status
+                  << " | " << Strings::ADMIN_MENU_LAST_ACCESSED << server.lastAccessed << "\n";
     }
 }
 
 void AdminMenu::viewServerDetails() {
     int serverId;
-    std::cout << "Enter server ID: ";
+    std::cout << Strings::ADMIN_MENU_ENTER_SERVER_ID;
     std::cin >> serverId;
 
     auto server = AdminService::getServerDetails(serverId);
-    std::cout << "ID: " << server.id << "\n"
-              << "Name: " << server.name << "\n"
-              << "API Key: " << server.apiKey << "\n"
-              << "Status: " << server.status << "\n"
-              << "Last Accessed: " << server.lastAccessed << "\n";
+    std::cout << Strings::ADMIN_MENU_ID << server.id << "\n"
+              << Strings::ADMIN_MENU_NAME << server.name << "\n"
+              << Strings::ADMIN_MENU_API_KEY << server.apiKey << "\n"
+              << Strings::ADMIN_MENU_STATUS << server.status << "\n"
+              << Strings::ADMIN_MENU_LAST_ACCESSED << server.lastAccessed << "\n";
 }
 
 void AdminMenu::updateServerKey() {
     int serverId;
     std::string newKey;
-    std::cout << "Enter server ID: ";
+    std::cout << Strings::ADMIN_MENU_ENTER_SERVER_ID;
     std::cin >> serverId;
-    std::cout << "Enter new API key: ";
+    std::cout << Strings::ADMIN_MENU_ENTER_NEW_KEY;
     std::cin >> newKey;
 
     AdminService::updateServerApiKey(serverId, newKey);
-    std::cout << "API key updated.\n";
+    std::cout << Strings::ADMIN_MENU_API_KEY_UPDATED;
 }
 
 void AdminMenu::updateServerStatus() {
     int serverId;
     std::string newStatus;
-    std::cout << "Enter server ID: ";
+    std::cout << Strings::ADMIN_MENU_ENTER_SERVER_ID;
     std::cin >> serverId;
-    std::cout << "Enter new status (active/inactive): ";
+    std::cout << Strings::ADMIN_MENU_ENTER_NEW_STATUS;
     std::cin >> newStatus;
 
     AdminService::updateServerStatus(serverId, newStatus);
-    std::cout << "Status updated.\n";
+    std::cout << Strings::ADMIN_MENU_STATUS_UPDATED;
 }
 
 void AdminMenu::addCategory() {
     std::string category;
-    std::cout << "Enter new category name: ";
+    std::cout << Strings::ADMIN_MENU_ENTER_NEW_CATEGORY;
     std::cin >> category;
 
     AdminService::addCategory(category);
-    std::cout << "Category added.\n";
+    std::cout << Strings::ADMIN_MENU_CATEGORY_ADDED;
 }

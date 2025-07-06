@@ -4,6 +4,7 @@
 #include "SearchMenu.h"
 #include "NotificationMenu.h"
 #include "../utils/ConsoleUtils.h"
+#include "../constants/Strings.h"
 #include <iostream>
 
 UserMenu::UserMenu(const User& user) : currentUser(user) {}
@@ -12,14 +13,14 @@ void UserMenu::display() {
     bool back = false;
     while (!back) {
         // ConsoleUtils::clear();
-        std::cout << "Welcome to the News Application, " << currentUser.getEmail() << "\n";
-        std::cout << "====================================\n";
-        std::cout << "1. Headlines\n";
-        std::cout << "2. Saved Articles\n";
-        std::cout << "3. Search\n";
-        std::cout << "4. Notifications\n";
-        std::cout << "5. Logout\n";
-        std::cout << "Enter choice: ";
+        std::cout << Strings::USER_MENU_WELCOME << currentUser.getEmail() << "\n";
+        std::cout << Strings::USER_MENU_SEPARATOR;
+        std::cout << Strings::USER_MENU_HEADLINES;
+        std::cout << Strings::USER_MENU_SAVED_ARTICLES;
+        std::cout << Strings::USER_MENU_SEARCH;
+        std::cout << Strings::USER_MENU_NOTIFICATIONS;
+        std::cout << Strings::USER_MENU_LOGOUT;
+        std::cout << Strings::USER_MENU_ENTER_CHOICE;
 
         int choice = ConsoleUtils::getValidatedInput(1, 5);
         switch (choice) {
@@ -39,7 +40,7 @@ void UserMenu::display() {
                 back = true;
                 break;
             default:
-                std::cout << "Invalid choice.\n";
+                std::cout << Strings::INVALID_CHOICE;
         }
     }
 }
