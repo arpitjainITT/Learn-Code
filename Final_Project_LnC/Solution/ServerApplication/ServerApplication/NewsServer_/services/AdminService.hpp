@@ -12,6 +12,12 @@ public:
     static bool updateExternalServerStatus(int serverId, const std::string& newStatus);
     static bool updateExternalServerStatus(const std::string& serverName, const std::string& status);
     static bool addCategory(const std::string& category);
+    static void hideCategory(const std::string& category);
+    static void unhideCategory(const std::string& category);
+    static void addFilteredKeyword(const std::string& keyword);
+    static void removeFilteredKeyword(const std::string& keyword);
+    static nlohmann::json getHiddenCategories();
+    static nlohmann::json getFilteredKeywords();
 };
 
 #endif 

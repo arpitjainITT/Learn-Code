@@ -15,6 +15,7 @@ private:
     void showDateRangeMenu();
     void fetchAndDisplayArticles(const std::string& category = "", const std::string& startDate = "", const std::string& endDate = "");
     void showArticleOptions(int articleId);
+    std::string selectCategoryMenu();
 };
 
 #endif 

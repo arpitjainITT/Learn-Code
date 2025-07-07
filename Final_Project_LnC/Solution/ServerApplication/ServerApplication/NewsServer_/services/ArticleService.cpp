@@ -48,3 +48,20 @@ json ArticleService::getReactionStats(int articleId) {
 void ArticleService::storeArticle(const json& article) {
     Database::storeArticle(article);
 }
+
+void ArticleService::reportArticle(int userId, int articleId, const std::string& reason) {
+    Database::reportArticle(userId, articleId, reason);
+}
+void ArticleService::hideArticle(int articleId) {
+    Database::hideArticle(articleId);
+}
+void ArticleService::unhideArticle(int articleId) {
+    Database::unhideArticle(articleId);
+}
+nlohmann::json ArticleService::getReportedArticles() {
+    return Database::getReportedArticles();
+}
+
+nlohmann::json ArticleService::getAllCategories() {
+    return Database::getAllCategories();
+}

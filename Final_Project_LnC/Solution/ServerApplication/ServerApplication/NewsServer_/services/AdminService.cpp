@@ -52,3 +52,22 @@ bool AdminService::addCategory(const std::string& category) {
         return false;
     }
 }
+
+void AdminService::hideCategory(const std::string& category) {
+    Database::hideCategory(category);
+}
+void AdminService::unhideCategory(const std::string& category) {
+    Database::unhideCategory(category);
+}
+void AdminService::addFilteredKeyword(const std::string& keyword) {
+    Database::addFilteredKeyword(keyword);
+}
+void AdminService::removeFilteredKeyword(const std::string& keyword) {
+    Database::removeFilteredKeyword(keyword);
+}
+nlohmann::json AdminService::getHiddenCategories() {
+    return Database::getHiddenCategories();
+}
+nlohmann::json AdminService::getFilteredKeywords() {
+    return Database::getFilteredKeywords();
+}

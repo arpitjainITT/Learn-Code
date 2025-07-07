@@ -14,7 +14,7 @@ void HeadlinesMenu::display() {
         std::cout << Strings::HEADLINES_MENU_TITLE;
         std::cout << Strings::HEADLINES_MENU_TODAY;
         std::cout << Strings::HEADLINES_MENU_DATE_RANGE;
-        std::cout << Strings::HEADLINES_MENU_LOGOUT;
+        std::cout << Strings::HEADLINES_MENU_BACK;
         std::cout << Strings::HEADLINES_MENU_ENTER_CHOICE;
 
         int choice = ConsoleUtils::getValidatedInput(1, 3);
@@ -34,38 +34,46 @@ void HeadlinesMenu::display() {
     }
 }
 
+std::string HeadlinesMenu::selectCategoryMenu() {
+    auto categories = NewsService::getAllCategories();
+    if (categories.empty()) {
+        std::cout << "No categories available.\n";
+        return "";
+    }
+    std::cout << "[1] All Categories\n";
+    for (size_t i = 0; i < categories.size(); ++i) {
+        std::cout << "[" << (i + 2) << "] " << categories[i] << "\n";
+    }
+    std::cout << "[" << (categories.size() + 2) << "] Back\n";
+    std::cout << "Enter your choice: ";
+    int maxChoice = categories.size() + 2;
+    int choice = ConsoleUtils::getValidatedInput(1, maxChoice);
+    if (choice == 1) {
+        return "all";
+    } else if (choice == maxChoice) {
+        return ""; // Back
+    } else {
+        return categories[choice - 2];
+    }
+}
+
 void HeadlinesMenu::showTodayMenu() {
     // ConsoleUtils::clear();
     std::cout << Strings::HEADLINES_TODAY_TITLE;
-    std::cout << Strings::HEADLINES_TODAY_ALL;
-    std::cout << Strings::HEADLINES_TODAY_BUSINESS;
-    std::cout << Strings::HEADLINES_TODAY_ENTERTAINMENT;
-    std::cout << Strings::HEADLINES_TODAY_SPORTS;
-    std::cout << Strings::HEADLINES_TODAY_TECHNOLOGY;
-    std::cout << Strings::HEADLINES_TODAY_BACK;
-
-    int choice = ConsoleUtils::getValidatedInput(1, 6);
-    std::string category;
-    switch (choice) {
-        case 1: category = "all"; break;
-        case 2: category = "business"; break;
-        case 3: category = "entertainment"; break;
-        case 4: category = "sports"; break;
-        case 5: category = "technology"; break;
-        case 6: return;
-    }
-
-    fetchAndDisplayArticles(category);
+    std::string selectedCategory = selectCategoryMenu();
+    if (selectedCategory.empty()) return;
+    fetchAndDisplayArticles(selectedCategory);
 }
 
 void HeadlinesMenu::showDateRangeMenu() {
+    std::string selectedCategory = selectCategoryMenu();
+    if (selectedCategory.empty()) return;
     std::string startDate, endDate;
     std::cout << Strings::HEADLINES_ENTER_START_DATE;
     std::cin >> startDate;
     std::cout << Strings::HEADLINES_ENTER_END_DATE;
     std::cin >> endDate;
-
-    fetchAndDisplayArticles("all", startDate, endDate);
+    fetchAndDisplayArticles(selectedCategory, startDate, endDate);
 }
 
 void HeadlinesMenu::fetchAndDisplayArticles(const std::string& category, const std::string& startDate, const std::string& endDate) {
@@ -94,10 +102,11 @@ void HeadlinesMenu::showArticleOptions(int articleId) {
     std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_SAVE;
     std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_LIKE;
     std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_DISLIKE;
+    std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_REPORT;
     std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_BACK;
     std::cout << Strings::HEADLINES_ARTICLE_OPTIONS_ENTER_CHOICE;
 
-    int choice = ConsoleUtils::getValidatedInput(1, 4);
+    int choice = ConsoleUtils::getValidatedInput(1, 5);
     switch (choice) {
         case 1:
             NewsService::saveArticle(currentUser.getId(), articleId);
@@ -111,7 +120,15 @@ void HeadlinesMenu::showArticleOptions(int articleId) {
             NewsService::dislikeArticle(currentUser.getId(), articleId);
             std::cout << Strings::HEADLINES_ARTICLE_DISLIKED;
             break;
-        case 4:
+        case 4: {
+            std::cout << "Enter reason for reporting (optional): ";
+            std::string reason;
+            std::getline(std::cin >> std::ws, reason);
+            NewsService::reportArticle(currentUser.getId(), articleId, reason);
+            std::cout << "Article reported.\n";
+            break;
+        }
+        case 5:
             return;
     }
     ConsoleUtils::pause();

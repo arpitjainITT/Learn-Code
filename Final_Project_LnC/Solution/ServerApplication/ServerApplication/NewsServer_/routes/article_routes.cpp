@@ -30,6 +30,13 @@ Rest::Route::Result getArticlesByCategoryHandler(const Rest::Request& req, Http:
     return Rest::Route::Result::Ok;
 }
 
+// GET /articles/categories
+Rest::Route::Result getAllCategoriesHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    json result = ArticleService::getAllCategories();
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
 // POST /articles/save
 Rest::Route::Result saveArticleHandler(const Rest::Request& req, Http::ResponseWriter response) {
     auto body = json::parse(req.body());
@@ -101,12 +108,47 @@ Rest::Route::Result getReactionStatsHandler(const Rest::Request& req, Http::Resp
     return Rest::Route::Result::Ok;
 }
 
+// POST /articles/:id/report
+Rest::Route::Result reportArticleHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    int articleId = req.param(":id").as<int>();
+    auto body = json::parse(req.body());
+    int userId = body["user_id"];
+    std::string reason = body.value("reason", "");
+    ArticleService::reportArticle(userId, articleId, reason);
+    response.send(Http::Code::Ok, "Article reported.");
+    return Rest::Route::Result::Ok;
+}
+
+// POST /admin/articles/:id/hide
+Rest::Route::Result hideArticleHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    int articleId = req.param(":id").as<int>();
+    ArticleService::hideArticle(articleId);
+    response.send(Http::Code::Ok, "Article hidden.");
+    return Rest::Route::Result::Ok;
+}
+
+// POST /admin/articles/:id/unhide
+Rest::Route::Result unhideArticleHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    int articleId = req.param(":id").as<int>();
+    ArticleService::unhideArticle(articleId);
+    response.send(Http::Code::Ok, "Article unhidden.");
+    return Rest::Route::Result::Ok;
+}
+
+// GET /admin/reported-articles
+Rest::Route::Result getReportedArticlesHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    json result = ArticleService::getReportedArticles();
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
 void ArticleRoutes::setup(Rest::Router& router) {
     using namespace Rest;
 
     Routes::Get(router, "/articles", getAllArticlesHandler);
     Routes::Get(router, "/articles/:id", getArticleByIdHandler);
     Routes::Get(router, "/articles/category/:category", getArticlesByCategoryHandler);
+    Routes::Get(router, "/articles/categories", getAllCategoriesHandler);
     Routes::Post(router, "/articles/save", saveArticleHandler);
     Routes::Delete(router, "/articles/save", deleteSavedArticleHandler);
     Routes::Get(router, "/articles/saved/:userId", getSavedArticlesHandler);
@@ -114,4 +156,9 @@ void ArticleRoutes::setup(Rest::Router& router) {
     Routes::Post(router, "/articles/:id/dislike", dislikeArticleHandler);
     Routes::Get(router, "/articles/search", searchArticlesHandler);
     Routes::Get(router, "/articles/:id/reactions", getReactionStatsHandler);
+    // New endpoints:
+    Routes::Post(router, "/articles/:id/report", reportArticleHandler);
+    Routes::Post(router, "/admin/articles/:id/hide", hideArticleHandler);
+    Routes::Post(router, "/admin/articles/:id/unhide", unhideArticleHandler);
+    Routes::Get(router, "/admin/reported-articles", getReportedArticlesHandler);
 }

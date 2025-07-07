@@ -14,6 +14,7 @@ namespace API {
     const std::string ALL_ARTICLES          = BASE_URL + "/articles";
     const std::string ARTICLE_BY_ID         = BASE_URL + "/articles/";               // + id
     const std::string ARTICLES_BY_CATEGORY  = BASE_URL + "/articles/category/";      // + category
+    const std::string ALL_CATEGORIES        = BASE_URL + "/articles/categories";
     const std::string SAVE_ARTICLE          = BASE_URL + "/articles/save";
     const std::string DELETE_SAVED_ARTICLE  = BASE_URL + "/articles/save";
     const std::string SAVED_ARTICLES        = BASE_URL + "/articles/saved/";         // + userId
@@ -35,6 +36,18 @@ namespace API {
     const std::string SET_KEYWORD_PREF      = BASE_URL + "/notifications/keyword";
     const std::string GET_PREFERENCES       = BASE_URL + "/notifications/preferences/"; // + userId
     const std::string USER_NOTIFICATIONS    = BASE_URL + "/notifications/";
+
+    // Reporting & Moderation
+    const std::string REPORT_ARTICLE         = BASE_URL + "/articles/"; // + id + /report
+    const std::string HIDE_ARTICLE           = BASE_URL + "/admin/articles/"; // + id + /hide
+    const std::string UNHIDE_ARTICLE         = BASE_URL + "/admin/articles/"; // + id + /unhide
+    const std::string REPORTED_ARTICLES      = BASE_URL + "/admin/reported-articles";
+    const std::string HIDE_CATEGORY          = BASE_URL + "/admin/categories/hide";
+    const std::string UNHIDE_CATEGORY        = BASE_URL + "/admin/categories/unhide";
+    const std::string ADD_FILTERED_KEYWORD   = BASE_URL + "/admin/keywords/filter";
+    const std::string REMOVE_FILTERED_KEYWORD= BASE_URL + "/admin/keywords/unfilter";
+    const std::string HIDDEN_CATEGORIES      = BASE_URL + "/admin/hidden-categories";
+    const std::string FILTERED_KEYWORDS      = BASE_URL + "/admin/filtered-keywords";
 
 }
 

@@ -52,12 +52,67 @@ Rest::Route::Result addCategoryHandler(const Rest::Request& req, Http::ResponseW
     return Rest::Route::Result::Ok;
 }
 
+// POST /admin/categories/hide
+Rest::Route::Result hideCategoryHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    auto body = json::parse(req.body());
+    std::string category = body.value("category", "");
+    AdminService::hideCategory(category);
+    response.send(Http::Code::Ok, "Category hidden.");
+    return Rest::Route::Result::Ok;
+}
+
+// POST /admin/categories/unhide
+Rest::Route::Result unhideCategoryHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    auto body = json::parse(req.body());
+    std::string category = body.value("category", "");
+    AdminService::unhideCategory(category);
+    response.send(Http::Code::Ok, "Category unhidden.");
+    return Rest::Route::Result::Ok;
+}
+
+// POST /admin/keywords/filter
+Rest::Route::Result addFilteredKeywordHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    auto body = json::parse(req.body());
+    std::string keyword = body.value("keyword", "");
+    AdminService::addFilteredKeyword(keyword);
+    response.send(Http::Code::Ok, "Keyword filtered.");
+    return Rest::Route::Result::Ok;
+}
+
+// POST /admin/keywords/unfilter
+Rest::Route::Result removeFilteredKeywordHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    auto body = json::parse(req.body());
+    std::string keyword = body.value("keyword", "");
+    AdminService::removeFilteredKeyword(keyword);
+    response.send(Http::Code::Ok, "Keyword unfiltered.");
+    return Rest::Route::Result::Ok;
+}
+
+// GET /admin/hidden-categories
+Rest::Route::Result getHiddenCategoriesHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    json result = AdminService::getHiddenCategories();
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
+// GET /admin/filtered-keywords
+Rest::Route::Result getFilteredKeywordsHandler(const Rest::Request& req, Http::ResponseWriter response) {
+    json result = AdminService::getFilteredKeywords();
+    response.send(Http::Code::Ok, result.dump());
+    return Rest::Route::Result::Ok;
+}
+
 void AdminRoutes::setup(Rest::Router& router) {
     using namespace Rest;
-
     Routes::Get(router, "/admin/servers", listServersHandler);
     Routes::Get(router, "/admin/servers/:id", viewServerHandler);
     Routes::Put(router, "/admin/servers/:id/key", updateApiKeyHandler);
     Routes::Put(router, "/admin/servers/:id/status", updateStatusHandler);
     Routes::Post(router, "/admin/category", addCategoryHandler);
+    Routes::Post(router, "/admin/categories/hide", hideCategoryHandler);
+    Routes::Post(router, "/admin/categories/unhide", unhideCategoryHandler);
+    Routes::Post(router, "/admin/keywords/filter", addFilteredKeywordHandler);
+    Routes::Post(router, "/admin/keywords/unfilter", removeFilteredKeywordHandler);
+    Routes::Get(router, "/admin/hidden-categories", getHiddenCategoriesHandler);
+    Routes::Get(router, "/admin/filtered-keywords", getFilteredKeywordsHandler);
 }

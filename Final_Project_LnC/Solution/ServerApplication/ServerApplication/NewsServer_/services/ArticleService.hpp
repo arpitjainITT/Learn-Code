@@ -20,6 +20,11 @@ public:
     static nlohmann::json searchArticles(const std::string& keyword, const std::string& startDate, const std::string& endDate, const std::string& sortBy);
 
     static void storeArticle(const nlohmann::json& article);  // Used by scheduler/API adapter
+    static nlohmann::json getAllCategories();
+    static void reportArticle(int userId, int articleId, const std::string& reason);
+    static void hideArticle(int articleId);
+    static void unhideArticle(int articleId);
+    static nlohmann::json getReportedArticles();
 };
 
 #endif 

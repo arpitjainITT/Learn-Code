@@ -20,6 +20,14 @@ json Database::getAllArticles() {
         FROM news_article a
         LEFT JOIN news_article_category ac ON a.id = ac.news_id
         LEFT JOIN news_category c ON ac.category_id = c.id
+        WHERE a.is_hidden = 0
+          AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
+          AND NOT EXISTS (
+              SELECT 1 FROM filtered_keyword fk
+              WHERE a.title LIKE '%' || fk.keyword || '%'
+                 OR a.description LIKE '%' || fk.keyword || '%'
+                 OR a.content LIKE '%' || fk.keyword || '%'
+          )
     )";
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -49,6 +57,14 @@ json Database::getArticlesByCategory(const std::string& category) {
         LEFT JOIN news_article_category ac ON a.id = ac.news_id
         LEFT JOIN news_category c ON ac.category_id = c.id
         WHERE c.category_type = ?
+          AND a.is_hidden = 0
+          AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
+          AND NOT EXISTS (
+              SELECT 1 FROM filtered_keyword fk
+              WHERE a.title LIKE '%' || fk.keyword || '%'
+                 OR a.description LIKE '%' || fk.keyword || '%'
+                 OR a.content LIKE '%' || fk.keyword || '%'
+          )
     )";
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_text(stmt, 1, category.c_str(), -1, SQLITE_STATIC);
@@ -209,8 +225,16 @@ json Database::searchArticles(const std::string &keyword, const std::string &sta
     LEFT JOIN news_article_category ac ON a.id = ac.news_id
     LEFT JOIN news_category c ON ac.category_id = c.id
     LEFT JOIN news_article_reaction r ON a.id = r.news_id
-    WHERE 1=1
-)";
+    WHERE a.is_hidden = 0
+      AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
+      AND a.id NOT IN (
+          SELECT id FROM news_article WHERE 
+              (
+                  SELECT COUNT(*) FROM filtered_keyword fk 
+                  WHERE a.title LIKE '%' || fk.keyword || '%' OR a.description LIKE '%' || fk.keyword || '%' OR a.content LIKE '%' || fk.keyword || '%'
+              ) > 0
+      )
+    )";
 
     if (!keyword.empty())
     {
@@ -264,21 +288,20 @@ json Database::searchArticles(const std::string &keyword, const std::string &sta
     {
         sqlite3_bind_text(stmt, idx++, endDate.c_str(), -1, SQLITE_TRANSIENT);
     }
-
     while (sqlite3_step(stmt) == SQLITE_ROW)
     {
         json article = {
             {"id", sqlite3_column_int(stmt, 0)},
-            {"title", (const char *)sqlite3_column_text(stmt, 1)},
-            {"description", (const char *)sqlite3_column_text(stmt, 2)},
-            {"url", (const char *)sqlite3_column_text(stmt, 3)},
-            {"source", (const char *)sqlite3_column_text(stmt, 4)},
-            {"category", (const char *)sqlite3_column_text(stmt, 5)},
+            {"title", (const char*)sqlite3_column_text(stmt, 1)},
+            {"description", (const char*)sqlite3_column_text(stmt, 2)},
+            {"url", (const char*)sqlite3_column_text(stmt, 3)},
+            {"source", (const char*)sqlite3_column_text(stmt, 4)},
+            {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY},
             {"likes", sqlite3_column_int(stmt, 6)},
-            {"dislikes", sqlite3_column_int(stmt, 7)}};
+            {"dislikes", sqlite3_column_int(stmt, 7)}
+        };
         result.push_back(article);
     }
-
     finalize(stmt);
     return result;
 }
@@ -934,4 +957,191 @@ void Database::storeArticle(const json& article) {
     notifyUsersIfMatched(title, content, category, articleId);
 
      std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
+
+    sqlite3_stmt* updateStmt;
+    const char* updateQuery = "UPDATE external_server SET last_accessed = CURRENT_TIMESTAMP WHERE id = ?";
+    if (sqlite3_prepare_v2(db, updateQuery, -1, &updateStmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(updateStmt, 1, 1);
+        sqlite3_step(updateStmt);
+    }
+    sqlite3_finalize(updateStmt);
+}
+
+void Database::reportArticle(int userId, int articleId, const std::string& reason) {
+    sqlite3* db = DBManager::getInstance().getDB();
+    // Insert report
+    sqlite3_stmt* stmt;
+    const char* insertQuery = R"(
+        INSERT INTO reports (article_id, user_id, reason) VALUES (?, ?, ?)
+    )";
+    if (sqlite3_prepare_v2(db, insertQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, articleId);
+        sqlite3_bind_int(stmt, 2, userId);
+        sqlite3_bind_text(stmt, 3, reason.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+    // Increment report_count
+    const char* updateQuery = R"(
+        UPDATE news_article SET report_count = report_count + 1 WHERE id = ?
+    )";
+    if (sqlite3_prepare_v2(db, updateQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, articleId);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+    // Auto-hide if threshold reached (threshold = 5)
+    const char* checkQuery = R"(
+        SELECT report_count FROM news_article WHERE id = ?
+    )";
+    int count = 0;
+    if (sqlite3_prepare_v2(db, checkQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, articleId);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            count = sqlite3_column_int(stmt, 0);
+        }
+    }
+    finalize(stmt);
+    if (count >= 5) {
+        hideArticle(articleId);
+    }
+}
+
+void Database::hideArticle(int articleId) {
+    sqlite3_stmt* stmt;
+    const char* query = "UPDATE news_article SET is_hidden = 1 WHERE id = ?";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, articleId);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+void Database::unhideArticle(int articleId) {
+    sqlite3_stmt* stmt;
+    const char* query = "UPDATE news_article SET is_hidden = 0 WHERE id = ?";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, articleId);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+void Database::hideCategory(const std::string& category) {
+    int categoryId = getCategoryId(category);
+    if (categoryId == -1) return;
+    sqlite3_stmt* stmt;
+    const char* query = "INSERT OR IGNORE INTO hidden_category (category_id) VALUES (?)";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, categoryId);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+void Database::unhideCategory(const std::string& category) {
+    int categoryId = getCategoryId(category);
+    if (categoryId == -1) return;
+    sqlite3_stmt* stmt;
+    const char* query = "DELETE FROM hidden_category WHERE category_id = ?";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, categoryId);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+void Database::addFilteredKeyword(const std::string& keyword) {
+    sqlite3_stmt* stmt;
+    const char* query = "INSERT OR IGNORE INTO filtered_keyword (keyword) VALUES (?)";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, keyword.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+void Database::removeFilteredKeyword(const std::string& keyword) {
+    sqlite3_stmt* stmt;
+    const char* query = "DELETE FROM filtered_keyword WHERE keyword = ?";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, keyword.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(stmt);
+    }
+    finalize(stmt);
+}
+
+nlohmann::json Database::getReportedArticles() {
+    nlohmann::json result = nlohmann::json::array();
+    sqlite3_stmt* stmt;
+    const char* query = R"(
+        SELECT a.id, a.title, a.report_count, a.is_hidden, COUNT(r.id) as num_reports
+        FROM news_article a
+        LEFT JOIN reports r ON a.id = r.article_id
+        WHERE a.report_count > 0
+        GROUP BY a.id
+        ORDER BY num_reports DESC
+    )";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            nlohmann::json article = {
+                {"id", sqlite3_column_int(stmt, 0)},
+                {"title", (const char*)sqlite3_column_text(stmt, 1)},
+                {"report_count", sqlite3_column_int(stmt, 2)},
+                {"is_hidden", sqlite3_column_int(stmt, 3)},
+                {"num_reports", sqlite3_column_int(stmt, 4)}
+            };
+            result.push_back(article);
+        }
+    }
+    finalize(stmt);
+    return result;
+}
+
+nlohmann::json Database::getHiddenCategories() {
+    nlohmann::json result = nlohmann::json::array();
+    sqlite3_stmt* stmt;
+    const char* query = R"(
+        SELECT c.category_type
+        FROM hidden_category h
+        JOIN news_category c ON h.category_id = c.id
+    )";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            result.push_back((const char*)sqlite3_column_text(stmt, 0));
+        }
+    }
+    finalize(stmt);
+    return result;
+}
+
+nlohmann::json Database::getFilteredKeywords() {
+    nlohmann::json result = nlohmann::json::array();
+    sqlite3_stmt* stmt;
+    const char* query = "SELECT keyword FROM filtered_keyword";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            result.push_back((const char*)sqlite3_column_text(stmt, 0));
+        }
+    }
+    finalize(stmt);
+    return result;
+}
+
+nlohmann::json Database::getAllCategories() {
+    nlohmann::json result = nlohmann::json::array();
+    sqlite3_stmt* stmt;
+    const char* query = R"(
+        SELECT c.category_type
+        FROM news_category c
+        WHERE c.id NOT IN (SELECT category_id FROM hidden_category)
+        ORDER BY c.category_type
+    )";
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            result.push_back((const char*)sqlite3_column_text(stmt, 0));
+        }
+    }
+    finalize(stmt);
+    return result;
 }

@@ -41,7 +41,13 @@ namespace Strings {
     const std::string ADMIN_MENU_UPDATE_KEY = "3. Update Server API Key\n";
     const std::string ADMIN_MENU_UPDATE_STATUS = "4. Update Server Status\n";
     const std::string ADMIN_MENU_ADD_CATEGORY = "5. Add New Category\n";
-    const std::string ADMIN_MENU_LOGOUT = "6. Logout\n";
+    const std::string ADMIN_MENU_REVIEW_REPORTS = "6. Review Reported Articles\n";
+    const std::string ADMIN_MENU_HIDE_ARTICLE = "7. Hide/Unhide Article\n";
+    const std::string ADMIN_MENU_HIDE_CATEGORY = "8. Hide/Unhide Category\n";
+    const std::string ADMIN_MENU_MANAGE_KEYWORDS = "9. Manage Filtered Keywords\n";
+    const std::string ADMIN_MENU_SHOW_HIDDEN_CATEGORIES = "10. Show Hidden Categories\n";
+    const std::string ADMIN_MENU_SHOW_FILTERED_KEYWORDS = "11. Show Filtered Keywords\n";
+    const std::string ADMIN_MENU_LOGOUT = "12. Logout\n";
     const std::string ADMIN_MENU_ENTER_CHOICE = "Enter your choice: ";
     const std::string ADMIN_MENU_ID = "ID: ";
     const std::string ADMIN_MENU_NAME = "Name: ";
@@ -61,14 +67,11 @@ namespace Strings {
     const std::string HEADLINES_MENU_TODAY = "1. Today\n";
     const std::string HEADLINES_MENU_DATE_RANGE = "2. Date range\n";
     const std::string HEADLINES_MENU_LOGOUT = "3. Logout\n";
+    const std::string HEADLINES_MENU_BACK = "3. Back\n";
     const std::string HEADLINES_MENU_ENTER_CHOICE = "Enter choice: ";
     const std::string HEADLINES_MENU_INVALID_CHOICE = "Invalid choice.\n";
     const std::string HEADLINES_TODAY_TITLE = "---- Today's Headlines ----\n";
     const std::string HEADLINES_TODAY_ALL = "1. All\n";
-    const std::string HEADLINES_TODAY_BUSINESS = "2. Business\n";
-    const std::string HEADLINES_TODAY_ENTERTAINMENT = "3. Entertainment\n";
-    const std::string HEADLINES_TODAY_SPORTS = "4. Sports\n";
-    const std::string HEADLINES_TODAY_TECHNOLOGY = "5. Technology\n";
     const std::string HEADLINES_TODAY_BACK = "6. Back\n";
     const std::string HEADLINES_ENTER_START_DATE = "Enter start date (YYYY-MM-DD): ";
     const std::string HEADLINES_ENTER_END_DATE = "Enter end date (YYYY-MM-DD): ";
@@ -79,7 +82,8 @@ namespace Strings {
     const std::string HEADLINES_ARTICLE_OPTIONS_SAVE = "1. Save Article\n";
     const std::string HEADLINES_ARTICLE_OPTIONS_LIKE = "2. Like Article\n";
     const std::string HEADLINES_ARTICLE_OPTIONS_DISLIKE = "3. Dislike Article\n";
-    const std::string HEADLINES_ARTICLE_OPTIONS_BACK = "4. Back\n";
+    const std::string HEADLINES_ARTICLE_OPTIONS_REPORT = "4. Report Article\n";
+    const std::string HEADLINES_ARTICLE_OPTIONS_BACK = "5. Back\n";
     const std::string HEADLINES_ARTICLE_OPTIONS_ENTER_CHOICE = "Enter choice: ";
     const std::string HEADLINES_ARTICLE_SAVED = "Article saved.\n";
     const std::string HEADLINES_ARTICLE_LIKED = "Article liked.\n";
@@ -202,6 +206,8 @@ namespace Strings {
 
     // Auth Service
     const std::string AUTH_SERVICE_LOGIN_FAIL = "Login failed. Response: ";
+    const std::string AUTH_SERVICE_SIGNUP_SUCCESS = "Signup successful!";
+    const std::string AUTH_SERVICE_SIGNUP_USER_EXISTS = "Signup failed. Email may already exist.";
     const std::string AUTH_SERVICE_SIGNUP_FAIL = "Signup failed. Response: ";
 
     // Admin Service

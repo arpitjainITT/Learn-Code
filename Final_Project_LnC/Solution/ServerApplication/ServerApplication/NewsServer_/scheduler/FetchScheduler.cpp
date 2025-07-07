@@ -2,7 +2,6 @@
 #include <chrono>
 #include <iostream>
 #include "FetchScheduler.hpp"
-#include "../managers/NewsFetcherManager.hpp"
 #include "../adapters/NewsApiOrgAdapter.hpp"
 #include "../adapters/TheNewsApiAdapter.hpp"
 #include "../utils/HttpClient.hpp"

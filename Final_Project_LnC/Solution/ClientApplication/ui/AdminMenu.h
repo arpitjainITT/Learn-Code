@@ -16,6 +16,12 @@ private:
     void updateServerKey();
     void updateServerStatus();
     void addCategory();
+    void reviewReportedArticles();
+    void hideUnhideArticle();
+    void hideUnhideCategory();
+    void manageFilteredKeywords();
+    void showHiddenCategories();
+    void showFilteredKeywords();
 };
 
 #endif 

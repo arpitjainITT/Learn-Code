@@ -12,18 +12,19 @@ std::vector<Article> NewsService::getArticles(const std::string& category,
                                               const std::string& endDate) {
     std::vector<Article> articles;
 
-    std::string endpoint = API::ALL_ARTICLES;
-    bool hasParams = false;
-
+    std::string endpoint;
     if (!category.empty() && category != "all") {
-        endpoint += "?category=" + category;
-        hasParams = true;
+        endpoint = API::ARTICLES_BY_CATEGORY + category; // "/articles/category/business"
+    } else {
+        endpoint = API::ALL_ARTICLES; // "/articles"
     }
 
     if (!startDate.empty() && !endDate.empty()) {
-        endpoint += (hasParams ? "&" : "?");
+        endpoint += (endpoint.find('?') != std::string::npos ? "&" : "?");
         endpoint += "start=" + startDate + "&end=" + endDate;
     }
+
+    std::cout << "[NewsService ] : endpoint: " << endpoint << std::endl;
 
     try {
         std::string responseStr = HttpClient::get(endpoint);
@@ -34,7 +35,7 @@ std::vector<Article> NewsService::getArticles(const std::string& category,
             a.id = item.value("id", 0);
             a.title = item.value("title", "");
             a.description = item.value("description", "");
-            a.category = item.value("category", Strings::NEWS_SERVICE_DEFAULT_CATEGORY);
+            a.category = item.value("category", category);
             a.source = item.value("source", "");
             a.url = item.value("url", "");
             a.createdAt = item.value("created_at", "");
@@ -84,6 +85,20 @@ std::vector<Article> NewsService::searchArticles(const std::string& keyword,
     return articles;
 }
 
+std::vector<std::string> NewsService::getAllCategories() {
+    std::vector<std::string> categories;
+    try {
+        std::string responseStr = HttpClient::get(API::ALL_CATEGORIES);
+        auto jsonArr = json::parse(responseStr);
+        for (const auto& item : jsonArr) {
+            categories.push_back(item.get<std::string>());
+        }
+    } catch (...) {
+        std::cerr << "Failed to fetch categories.\n";
+    }
+    return categories;
+}
+
 void NewsService::saveArticle(int userId, int articleId) {
     json body = {
         {"user_id", userId},
@@ -105,4 +120,13 @@ void NewsService::dislikeArticle(int userId, int articleId) {
         {"user_id", userId}
     };
     HttpClient::post(API::DISLIKE_ARTICLE + std::to_string(articleId) + "/dislike", body.dump());
+}
+
+void NewsService::reportArticle(int userId, int articleId, const std::string& reason) {
+    json body = {
+        {"user_id", userId},
+        {"reason", reason}
+    };
+    std::string endpoint = API::REPORT_ARTICLE + std::to_string(articleId) + "/report";
+    HttpClient::post(endpoint, body.dump());
 }

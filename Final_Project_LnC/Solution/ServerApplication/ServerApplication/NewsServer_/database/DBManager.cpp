@@ -56,7 +56,7 @@ bool DBManager::executeSchema() {
 
         CREATE TABLE IF NOT EXISTS external_server (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            server_name TEXT NOT NULL,
+            server_name TEXT NOT NULL UNIQUE,
             api_url TEXT NOT NULL,
             api_key TEXT NOT NULL,
             server_status_id INTEGER NOT NULL,
@@ -76,7 +76,9 @@ bool DBManager::executeSchema() {
             url TEXT UNIQUE,
             image_url TEXT,
             content TEXT,
-            source TEXT
+            source TEXT,
+            is_hidden INTEGER NOT NULL DEFAULT 0,
+            report_count INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS news_category (
@@ -148,6 +150,28 @@ bool DBManager::executeSchema() {
             FOREIGN KEY(article_id) REFERENCES news_article(id)
         );
 
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            reason TEXT,
+            timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (article_id) REFERENCES news_article(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS hidden_category (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER NOT NULL,
+            FOREIGN KEY (category_id) REFERENCES news_category(id) ON DELETE CASCADE,
+            UNIQUE(category_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS filtered_keyword (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            keyword TEXT NOT NULL UNIQUE
+        );
+
     )";
 
     char* errMsg = nullptr;
@@ -157,5 +181,18 @@ bool DBManager::executeSchema() {
         sqlite3_free(errMsg);
         return false;
     }
+    
+    const char* sampleData = R"(
+        INSERT OR IGNORE INTO external_server (server_name, api_url, api_key, server_status_id) VALUES 
+        ('TheNewsAPI', 'https://api.thenewsapi.com/v1/news/top?api_token=', 'E02tf7DTesEzIvEVbtezYUADgbAn4WQd9EWXrKXY', (SELECT id FROM server_status WHERE type = 'active')),
+        ('NewsAPI.org', 'https://newsapi.org/v2/top-headlines?country=us&apiKey=', 'cf2275c8dedd4fef9c4b5c49d2bd09bb', (SELECT id FROM server_status WHERE type = 'inactive')),
+        ('TestServer', 'https://test.api.com/', 'test_key_123', (SELECT id FROM server_status WHERE type = 'inactive'));
+    )";
+    rc = sqlite3_exec(db, sampleData, nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+        std::cerr << "Failed to insert sample server data: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    }
+    
     return true;
 }

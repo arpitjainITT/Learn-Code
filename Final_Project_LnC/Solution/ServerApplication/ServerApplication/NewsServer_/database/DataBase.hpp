@@ -21,6 +21,7 @@ public:
 
     static void addCategory(const std::string& category);
     static int getCategoryId(const std::string& category);
+    static nlohmann::json getAllCategories();
 
     static void setCategoryNotificationPreference(int userId, int categoryId, bool isEnabled);
     static void setKeywordNotificationPreference(int userId, const std::string& keyword, bool isEnabled);
@@ -45,6 +46,18 @@ public:
     static void createDefaultAdmin();
 
     static void storeArticle(const nlohmann::json& article);
+
+    // Reporting and moderation
+    static void reportArticle(int userId, int articleId, const std::string& reason);
+    static void hideArticle(int articleId);
+    static void unhideArticle(int articleId);
+    static void hideCategory(const std::string& category);
+    static void unhideCategory(const std::string& category);
+    static void addFilteredKeyword(const std::string& keyword);
+    static void removeFilteredKeyword(const std::string& keyword);
+    static nlohmann::json getReportedArticles();
+    static nlohmann::json getHiddenCategories();
+    static nlohmann::json getFilteredKeywords();
 
 };
 
