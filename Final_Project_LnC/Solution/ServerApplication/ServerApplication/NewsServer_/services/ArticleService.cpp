@@ -4,8 +4,8 @@
 
 using json = nlohmann::json;
 
-json ArticleService::getAllArticles() {
-    return Database::getAllArticles();
+json ArticleService::getAllArticles(int userId) {
+    return Database::getAllArticles(userId);
 }
 
 json ArticleService::getArticleById(int articleId) {

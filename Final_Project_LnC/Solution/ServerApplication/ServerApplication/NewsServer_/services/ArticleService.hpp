@@ -6,7 +6,7 @@
 
 class ArticleService {
 public:
-    static nlohmann::json getAllArticles();
+    static nlohmann::json getAllArticles(int userId = -1);
     static nlohmann::json getArticleById(int articleId);
     static nlohmann::json getArticlesByCategory(const std::string& category);
 

@@ -62,7 +62,7 @@ void HeadlinesMenu::showTodayMenu() {
     std::cout << Strings::HEADLINES_TODAY_TITLE;
     std::string selectedCategory = selectCategoryMenu();
     if (selectedCategory.empty()) return;
-    fetchAndDisplayArticles(selectedCategory);
+    fetchAndDisplayArticles(selectedCategory, "", "", currentUser.getId());
 }
 
 void HeadlinesMenu::showDateRangeMenu() {
@@ -73,11 +73,11 @@ void HeadlinesMenu::showDateRangeMenu() {
     std::cin >> startDate;
     std::cout << Strings::HEADLINES_ENTER_END_DATE;
     std::cin >> endDate;
-    fetchAndDisplayArticles(selectedCategory, startDate, endDate);
+    fetchAndDisplayArticles(selectedCategory, startDate, endDate, currentUser.getId());
 }
 
-void HeadlinesMenu::fetchAndDisplayArticles(const std::string& category, const std::string& startDate, const std::string& endDate) {
-    auto articles = NewsService::getArticles(category, startDate, endDate);
+void HeadlinesMenu::fetchAndDisplayArticles(const std::string& category, const std::string& startDate, const std::string& endDate, int userId) {
+    auto articles = NewsService::getArticles(category, startDate, endDate, userId);
     if (articles.empty()) {
         std::cout << Strings::HEADLINES_NO_ARTICLES;
         ConsoleUtils::pause();

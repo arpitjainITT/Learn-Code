@@ -7,8 +7,6 @@
 
 class EmailSender {
 public:
-    static void sendNotifications(int userId, const nlohmann::json& articles);
-private:
     static bool sendEmail(const std::string& to, const std::string& subject, const std::string& body);
 };
 

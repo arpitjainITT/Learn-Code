@@ -13,7 +13,7 @@ private:
 
     void showTodayMenu();
     void showDateRangeMenu();
-    void fetchAndDisplayArticles(const std::string& category = "", const std::string& startDate = "", const std::string& endDate = "");
+    void fetchAndDisplayArticles(const std::string& category = "", const std::string& startDate = "", const std::string& endDate = "", int userId = -1);
     void showArticleOptions(int articleId);
     std::string selectCategoryMenu();
 };

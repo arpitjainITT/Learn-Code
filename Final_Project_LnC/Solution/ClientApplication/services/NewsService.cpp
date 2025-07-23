@@ -9,22 +9,27 @@ using json = nlohmann::json;
 
 std::vector<Article> NewsService::getArticles(const std::string& category,
                                               const std::string& startDate,
-                                              const std::string& endDate) {
+                                              const std::string& endDate,
+                                              int userId) {
     std::vector<Article> articles;
 
     std::string endpoint;
     if (!category.empty() && category != "all") {
-        endpoint = API::ARTICLES_BY_CATEGORY + category; // "/articles/category/business"
+        endpoint = API::ARTICLES_BY_CATEGORY + category;
     } else {
-        endpoint = API::ALL_ARTICLES; // "/articles"
+        endpoint = API::ALL_ARTICLES;
     }
 
+    bool hasParams = endpoint.find('?') != std::string::npos;
     if (!startDate.empty() && !endDate.empty()) {
-        endpoint += (endpoint.find('?') != std::string::npos ? "&" : "?");
+        endpoint += (hasParams ? "&" : "?");
         endpoint += "start=" + startDate + "&end=" + endDate;
+        hasParams = true;
     }
-
-    std::cout << "[NewsService ] : endpoint: " << endpoint << std::endl;
+    if (userId != -1) {
+        endpoint += (hasParams ? "&" : "?");
+        endpoint += "userId=" + std::to_string(userId);
+    }
 
     try {
         std::string responseStr = HttpClient::get(endpoint);
@@ -35,7 +40,7 @@ std::vector<Article> NewsService::getArticles(const std::string& category,
             a.id = item.value("id", 0);
             a.title = item.value("title", "");
             a.description = item.value("description", "");
-            a.category = item.value("category", category);
+            a.category = item.value("category", Strings::NEWS_SERVICE_DEFAULT_CATEGORY);
             a.source = item.value("source", "");
             a.url = item.value("url", "");
             a.createdAt = item.value("created_at", "");

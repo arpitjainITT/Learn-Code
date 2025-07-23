@@ -9,7 +9,12 @@ using json = nlohmann::json;
 
 // GET /articles
 Rest::Route::Result getAllArticlesHandler(const Rest::Request& req, Http::ResponseWriter response) {
-    json result = ArticleService::getAllArticles();
+    int userId = -1;
+    auto query = req.query();
+    if (query.has("userId")) {
+        userId = std::stoi(query.get("userId").value());
+    }
+    json result = ArticleService::getAllArticles(userId);
     response.send(Http::Code::Ok, result.dump());
     return Rest::Route::Result::Ok;
 }

@@ -7,7 +7,7 @@
 
 class NewsService {
 public:
-    static std::vector<Article> getArticles(const std::string& category = "", const std::string& startDate = "", const std::string& endDate = "");
+    static std::vector<Article> getArticles(const std::string& category = "", const std::string& startDate = "", const std::string& endDate = "", int userId = -1);
     static std::vector<Article> searchArticles(const std::string& keyword, const std::string& startDate, const std::string& endDate, const std::string& sortBy = "");
     static std::vector<std::string> getAllCategories();
 

@@ -5,6 +5,7 @@
 #include <sqlite3.h>
 #include <iostream>
 #include "../utils/CategoryClassifier.hpp"
+#include "../utils/EmailSender.hpp"
 
 using json = nlohmann::json;
 
@@ -12,14 +13,54 @@ static void finalize(sqlite3_stmt* stmt) {
     if (stmt) sqlite3_finalize(stmt);
 }
 
-json Database::getAllArticles() {
+json Database::getAllArticles(int userId) {
     json result = json::array();
     sqlite3_stmt* stmt;
+    if (userId == -1) {
+        // Generic headlines 
+        const char* query = R"(
+            SELECT a.id, a.title, a.description, a.url, a.source, c.category_type
+            FROM news_article a
+            LEFT JOIN news_article_category ac ON a.id = ac.news_id
+            LEFT JOIN news_category c ON ac.category_id = c.id
+            WHERE a.is_hidden = 0
+              AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
+              AND NOT EXISTS (
+                  SELECT 1 FROM filtered_keyword fk
+                  WHERE a.title LIKE '%' || fk.keyword || '%'
+                     OR a.description LIKE '%' || fk.keyword || '%'
+                     OR a.content LIKE '%' || fk.keyword || '%'
+              )
+        )";
+        if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                json article = {
+                    {"id", sqlite3_column_int(stmt, 0)},
+                    {"title", (const char*)sqlite3_column_text(stmt, 1)},
+                    {"description", (const char*)sqlite3_column_text(stmt, 2)},
+                    {"url", (const char*)sqlite3_column_text(stmt, 3)},
+                    {"source", (const char*)sqlite3_column_text(stmt, 4)},
+                    {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                };
+                result.push_back(article);
+            }
+        } else {
+            std::cerr << Strings::DB_FETCH_ARTICLES_FAIL;
+        }
+        finalize(stmt);
+        return result;
+    }
+    // Personalized headlines for user
     const char* query = R"(
-        SELECT a.id, a.title, a.description, a.url, a.source, c.category_type
+        SELECT DISTINCT a.id, a.title, a.description, a.url, a.source, c.category_type
         FROM news_article a
         LEFT JOIN news_article_category ac ON a.id = ac.news_id
         LEFT JOIN news_category c ON ac.category_id = c.id
+        LEFT JOIN news_article_reaction r ON a.id = r.news_id AND r.user_id = ? AND r.reaction_type = 'like'
+        LEFT JOIN saved_news s ON a.id = s.news_id AND s.user_id = ?
+        LEFT JOIN (
+            SELECT article_id FROM notifications WHERE user_id = ?
+        ) n ON a.id = n.article_id
         WHERE a.is_hidden = 0
           AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
           AND NOT EXISTS (
@@ -28,8 +69,24 @@ json Database::getAllArticles() {
                  OR a.description LIKE '%' || fk.keyword || '%'
                  OR a.content LIKE '%' || fk.keyword || '%'
           )
+          AND (
+            c.category_type IN (SELECT category FROM notification_category_pref p JOIN news_category nc ON p.category_id = nc.id WHERE p.user_id = ? AND p.is_enabled = 1)
+            OR (
+                a.title LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
+                OR a.description LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
+                OR a.content LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
+            )
+            OR r.news_id IS NOT NULL
+            OR s.news_id IS NOT NULL
+          )
+          AND n.article_id IS NULL
+        ORDER BY a.created_at DESC
+        LIMIT 50
     )";
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        for (int i = 1; i <= 8; ++i) {
+            sqlite3_bind_int(stmt, i, userId);
+        }
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             json article = {
                 {"id", sqlite3_column_int(stmt, 0)},
@@ -45,6 +102,39 @@ json Database::getAllArticles() {
         std::cerr << Strings::DB_FETCH_ARTICLES_FAIL;
     }
     finalize(stmt);
+    // Fallback: if no personalized articles, show generic headlines
+    if (result.empty()) {
+        const char* fallbackQuery = R"(
+            SELECT a.id, a.title, a.description, a.url, a.source, c.category_type
+            FROM news_article a
+            LEFT JOIN news_article_category ac ON a.id = ac.news_id
+            LEFT JOIN news_category c ON ac.category_id = c.id
+            WHERE a.is_hidden = 0
+              AND (c.id IS NULL OR c.id NOT IN (SELECT category_id FROM hidden_category))
+              AND NOT EXISTS (
+                  SELECT 1 FROM filtered_keyword fk
+                  WHERE a.title LIKE '%' || fk.keyword || '%'
+                     OR a.description LIKE '%' || fk.keyword || '%'
+                     OR a.content LIKE '%' || fk.keyword || '%'
+              )
+        )";
+        if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), fallbackQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+            while (sqlite3_step(stmt) == SQLITE_ROW) {
+                json article = {
+                    {"id", sqlite3_column_int(stmt, 0)},
+                    {"title", (const char*)sqlite3_column_text(stmt, 1)},
+                    {"description", (const char*)sqlite3_column_text(stmt, 2)},
+                    {"url", (const char*)sqlite3_column_text(stmt, 3)},
+                    {"source", (const char*)sqlite3_column_text(stmt, 4)},
+                    {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                };
+                result.push_back(article);
+            }
+        } else {
+            std::cerr << Strings::DB_FETCH_ARTICLES_FAIL;
+        }
+        finalize(stmt);
+    }
     return result;
 }
 
@@ -638,6 +728,11 @@ void Database::notifyUsersIfMatched(const std::string& title, const std::string&
                     std::string message = Strings::DB_NEW_ARTICLE_CATEGORY + category;
                     std::cout << Strings::DB_NOTIFY_CALLED << category << "\n";
                     insertNotification(userId, articleId, title, message);
+                    // Send email notification
+                    std::string userEmail = getUserEmailById(userId);
+                    if (!userEmail.empty()) {
+                        EmailSender::sendEmail(userEmail, title, message);
+                    }
                 }
             }
             finalize(existsStmt);
@@ -661,6 +756,11 @@ void Database::notifyUsersIfMatched(const std::string& title, const std::string&
                 std::string message = Strings::DB_NEW_ARTICLE_KEYWORD + keyword;
                 std::cout << Strings::DB_NOTIFY_CALLED << keyword << "\n";
                 insertNotification(userId, articleId, title, message);
+                // Send email notification
+                std::string userEmail = getUserEmailById(userId);
+                if (!userEmail.empty()) {
+                    EmailSender::sendEmail(userEmail, title, message);
+                }
             }
         }
     }
@@ -783,6 +883,23 @@ int Database::getUserIdByEmail(const std::string& email) {
     }
     finalize(stmt);
     return userId;
+}
+
+std::string Database::getUserEmailById(int userId) {
+    std::string email;
+    sqlite3_stmt* stmt;
+    const char* query = R"(
+        SELECT email FROM user WHERE id = ?
+    )";
+    std::cout << "user id: " << userId << std::endl;
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, userId);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            email = (const char*)sqlite3_column_text(stmt, 0);
+        }
+    }
+    finalize(stmt);
+    return email;
 }
 
 bool Database::authenticateUser(const std::string& email, const std::string& password, int& userId, std::string& role) {

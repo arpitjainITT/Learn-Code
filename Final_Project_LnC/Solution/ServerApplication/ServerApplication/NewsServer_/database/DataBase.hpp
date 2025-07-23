@@ -6,7 +6,7 @@
 
 class Database {
 public:
-    static nlohmann::json getAllArticles();
+    static nlohmann::json getAllArticles(int userId = -1);
     static nlohmann::json getArticlesByCategory(const std::string& category);
     static nlohmann::json getArticleById(int id);
 
@@ -46,6 +46,8 @@ public:
     static void createDefaultAdmin();
 
     static void storeArticle(const nlohmann::json& article);
+
+    static std::string getUserEmailById(int userId);
 
     // Reporting and moderation
     static void reportArticle(int userId, int articleId, const std::string& reason);
