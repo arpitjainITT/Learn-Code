@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "../../database/Database.hpp"
+#include "../../database/DataBase.hpp"
 #include <nlohmann/json.hpp>
 #include <vector>
 

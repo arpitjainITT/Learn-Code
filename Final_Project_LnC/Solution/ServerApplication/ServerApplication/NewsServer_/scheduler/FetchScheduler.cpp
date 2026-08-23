@@ -42,52 +42,68 @@ void FetchScheduler::run() {
     }
 }
 
-auto safe_get = [](const json& j, const std::string& key) -> std::string {
-    return (j.contains(key) && j[key].is_string()) ? j[key].get<std::string>() : "";
-};
+static void tryFetchWithAdapter(std::shared_ptr<INewsApiAdapter> adapter) {
+    try {
+        std::cout << "[FetchScheduler] Trying: " << adapter->getSourceName() << "\n";
+        auto articles = adapter->fetchArticles();
+        if (articles.empty()) {
+            std::cerr << "[FetchScheduler] " << adapter->getSourceName() << " returned no articles.\n";
+            AdminService::updateExternalServerStatus(adapter->getSourceName(), "inactive");
+            return;
+        }
+        std::cout << "[FetchScheduler] Fetched " << articles.size()
+                  << " articles from " << adapter->getSourceName() << "\n";
+        for (const auto& article : articles) {
+            ArticleService::storeArticle(article);
+        }
+        AdminService::updateExternalServerStatus(adapter->getSourceName(), "active");
+    } catch (const std::exception& ex) {
+        std::cerr << "[FetchScheduler] " << adapter->getSourceName()
+                  << " failed: " << ex.what() << "\n";
+        AdminService::updateExternalServerStatus(adapter->getSourceName(), "inactive");
+    }
+}
 
 void FetchScheduler::fetchAndStoreArticles() {
-    std::shared_ptr<INewsApiAdapter> primaryAdapter = std::make_shared<NewsApiOrgAdapter>();
-    std::shared_ptr<INewsApiAdapter> fallbackAdapter = std::make_shared<TheNewsApiAdapter>();
+    // Read API keys from the database so admins can rotate them via the Admin Panel.
+    auto servers = AdminService::listExternalServers();
 
-    try {
-        std::cout << Strings::FETCH_SCHEDULER_TRY_PRIMARY;
-        auto articles = primaryAdapter->fetchArticles();
-        if (!articles.empty()) {
-            std::cout << Strings::FETCH_SCHEDULER_PRIMARY_FETCHED;
+    std::string theNewsApiKey;
+    std::string newsApiOrgKey;
+    bool theNewsApiActive   = false;
+    bool newsApiOrgActive   = false;
 
-            for (const auto& article : articles) {
-                std::cout << Strings::FETCH_SCHEDULER_STORING_ARTICLE << article.value("title", "No Title") << Strings::FETCH_SCHEDULER_FROM_SOURCE << article.value("source", "Unknown") << "\n";
-                ArticleService::storeArticle(article);
-            }
+    for (const auto& server : servers) {
+        std::string name   = server.value("server_name", "");
+        std::string status = server.value("status", "");
+        std::string key    = server.value("api_key", "");
 
-            AdminService::updateExternalServerStatus(primaryAdapter->getSourceName(), "active");
-            return;
-        } else {
-            std::cerr << Strings::FETCH_SCHEDULER_PRIMARY_NO_ARTICLES;
+        if (name == Strings::ADAPTER_THENEWSAPI_SOURCE_NAME) {
+            theNewsApiKey    = key;
+            theNewsApiActive = (status == "active");
+        } else if (name == Strings::ADAPTER_NEWSAPIORG_SOURCE_NAME) {
+            newsApiOrgKey    = key;
+            newsApiOrgActive = (status == "active");
         }
-    } catch (const std::exception& ex) {
-        std::cerr << Strings::FETCH_SCHEDULER_PRIMARY_FAILED << ex.what() << "\n";
-        AdminService::updateExternalServerStatus(primaryAdapter->getSourceName(), "inactive");
     }
 
-    try {
-        std::cout << Strings::FETCH_SCHEDULER_TRY_FALLBACK;
-        auto articles = fallbackAdapter->fetchArticles();
-        if (!articles.empty()) {
-            std::cout << Strings::FETCH_SCHEDULER_FALLBACK_FETCHED;
-            
-            for (const auto& article : articles) {
-                std::cout << Strings::FETCH_SCHEDULER_STORING_ARTICLE << article.value("title", "No Title") << Strings::FETCH_SCHEDULER_FROM_SOURCE << article.value("source", "Unknown") << "\n";
-                ArticleService::storeArticle(article);
-            }
+    // Build ordered list: active sources first, then inactive as fallback.
+    std::vector<std::shared_ptr<INewsApiAdapter>> adapters;
+    if (theNewsApiActive) {
+        adapters.push_back(std::make_shared<TheNewsApiAdapter>(theNewsApiKey));
+    }
+    if (newsApiOrgActive) {
+        adapters.push_back(std::make_shared<NewsApiOrgAdapter>(newsApiOrgKey));
+    }
+    // Add inactive servers as fallback candidates
+    if (!theNewsApiActive) {
+        adapters.push_back(std::make_shared<TheNewsApiAdapter>(theNewsApiKey));
+    }
+    if (!newsApiOrgActive) {
+        adapters.push_back(std::make_shared<NewsApiOrgAdapter>(newsApiOrgKey));
+    }
 
-            AdminService::updateExternalServerStatus(fallbackAdapter->getSourceName(), "active");
-        } else {
-            std::cerr << Strings::FETCH_SCHEDULER_FALLBACK_NO_ARTICLES;
-        }
-    } catch (const std::exception& ex) {
-        std::cerr << Strings::FETCH_SCHEDULER_FALLBACK_FAILED << ex.what() << "\n";
-        AdminService::updateExternalServerStatus(fallbackAdapter->getSourceName(), "inactive");
+    for (auto& adapter : adapters) {
+        tryFetchWithAdapter(adapter);
     }
 }

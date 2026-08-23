@@ -1,5 +1,5 @@
 #include "ArticleService.hpp"
-#include "../database/Database.hpp"
+#include "../database/DataBase.hpp"
 #include <iostream>
 
 using json = nlohmann::json;

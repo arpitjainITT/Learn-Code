@@ -12,6 +12,9 @@ DBManager& DBManager::getInstance() {
 }
 
 bool DBManager::initializeDB(const std::string& dbPath) {
+    if (db != nullptr) {
+        close();  // Release any existing connection before opening a new one.
+    }
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
         std::cerr << Strings::DB_OPEN_FAIL << sqlite3_errmsg(db) << std::endl;
         return false;
@@ -184,8 +187,8 @@ bool DBManager::executeSchema() {
     
     const char* sampleData = R"(
         INSERT OR IGNORE INTO external_server (server_name, api_url, api_key, server_status_id) VALUES 
-        ('TheNewsAPI', 'https://api.thenewsapi.com/v1/news/top?api_token=', 'E02tf7DTesEzIvEVbtezYUADgbAn4WQd9EWXrKXY', (SELECT id FROM server_status WHERE type = 'active')),
-        ('NewsAPI.org', 'https://newsapi.org/v2/top-headlines?country=us&apiKey=', 'cf2275c8dedd4fef9c4b5c49d2bd09bb', (SELECT id FROM server_status WHERE type = 'inactive')),
+        ('TheNewsAPI', 'https://api.thenewsapi.com/v1/news/top?api_token=', 'CONFIGURE_VIA_ADMIN_PANEL', (SELECT id FROM server_status WHERE type = 'inactive')),
+        ('NewsAPI.org', 'https://newsapi.org/v2/top-headlines?country=us&apiKey=', 'CONFIGURE_VIA_ADMIN_PANEL', (SELECT id FROM server_status WHERE type = 'inactive')),
         ('TestServer', 'https://test.api.com/', 'test_key_123', (SELECT id FROM server_status WHERE type = 'inactive'));
     )";
     rc = sqlite3_exec(db, sampleData, nullptr, nullptr, &errMsg);

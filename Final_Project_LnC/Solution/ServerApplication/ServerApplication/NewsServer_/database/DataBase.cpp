@@ -1,6 +1,7 @@
 #include "Database.hpp"
 #include "DBManager.hpp"
 #include "../utils/Strings.hpp"
+#include "../utils/PasswordHasher.hpp"
 #include <nlohmann/json.hpp>
 #include <sqlite3.h>
 #include <iostream>
@@ -11,6 +12,12 @@ using json = nlohmann::json;
 
 static void finalize(sqlite3_stmt* stmt) {
     if (stmt) sqlite3_finalize(stmt);
+}
+
+// Returns the text value of a column, or defaultVal if the column is NULL.
+static std::string safeText(sqlite3_stmt* stmt, int col, const std::string& defaultVal = "") {
+    const unsigned char* text = sqlite3_column_text(stmt, col);
+    return text ? std::string(reinterpret_cast<const char*>(text)) : defaultVal;
 }
 
 json Database::getAllArticles(int userId) {
@@ -35,12 +42,12 @@ json Database::getAllArticles(int userId) {
         if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
             while (sqlite3_step(stmt) == SQLITE_ROW) {
                 json article = {
-                    {"id", sqlite3_column_int(stmt, 0)},
-                    {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                    {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                    {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                    {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                    {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                    {"id",          sqlite3_column_int(stmt, 0)},
+                    {"title",       safeText(stmt, 1)},
+                    {"description", safeText(stmt, 2)},
+                    {"url",         safeText(stmt, 3)},
+                    {"source",      safeText(stmt, 4)},
+                    {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)}
                 };
                 result.push_back(article);
             }
@@ -50,7 +57,7 @@ json Database::getAllArticles(int userId) {
         finalize(stmt);
         return result;
     }
-    // Personalized headlines for user
+    // Personalized headlines for user — fix: use EXISTS for keyword matching (was LIMIT 1)
     const char* query = R"(
         SELECT DISTINCT a.id, a.title, a.description, a.url, a.source, c.category_type
         FROM news_article a
@@ -70,11 +77,18 @@ json Database::getAllArticles(int userId) {
                  OR a.content LIKE '%' || fk.keyword || '%'
           )
           AND (
-            c.category_type IN (SELECT category FROM notification_category_pref p JOIN news_category nc ON p.category_id = nc.id WHERE p.user_id = ? AND p.is_enabled = 1)
-            OR (
-                a.title LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
-                OR a.description LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
-                OR a.content LIKE '%' || (SELECT keyword FROM notification_keyword_pref WHERE user_id = ? AND is_enabled = 1 LIMIT 1) || '%'
+            c.category_type IN (
+                SELECT nc.category_type
+                FROM notification_category_pref p
+                JOIN news_category nc ON p.category_id = nc.id
+                WHERE p.user_id = ? AND p.is_enabled = 1
+            )
+            OR EXISTS (
+                SELECT 1 FROM notification_keyword_pref kp
+                WHERE kp.user_id = ? AND kp.is_enabled = 1
+                  AND (a.title LIKE '%' || kp.keyword || '%'
+                       OR a.description LIKE '%' || kp.keyword || '%'
+                       OR a.content LIKE '%' || kp.keyword || '%')
             )
             OR r.news_id IS NOT NULL
             OR s.news_id IS NOT NULL
@@ -84,17 +98,17 @@ json Database::getAllArticles(int userId) {
         LIMIT 50
     )";
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
-        for (int i = 1; i <= 8; ++i) {
+        for (int i = 1; i <= 5; ++i) {
             sqlite3_bind_int(stmt, i, userId);
         }
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             json article = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                {"id",          sqlite3_column_int(stmt, 0)},
+                {"title",       safeText(stmt, 1)},
+                {"description", safeText(stmt, 2)},
+                {"url",         safeText(stmt, 3)},
+                {"source",      safeText(stmt, 4)},
+                {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)}
             };
             result.push_back(article);
         }
@@ -121,12 +135,12 @@ json Database::getAllArticles(int userId) {
         if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), fallbackQuery, -1, &stmt, nullptr) == SQLITE_OK) {
             while (sqlite3_step(stmt) == SQLITE_ROW) {
                 json article = {
-                    {"id", sqlite3_column_int(stmt, 0)},
-                    {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                    {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                    {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                    {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                    {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                    {"id",          sqlite3_column_int(stmt, 0)},
+                    {"title",       safeText(stmt, 1)},
+                    {"description", safeText(stmt, 2)},
+                    {"url",         safeText(stmt, 3)},
+                    {"source",      safeText(stmt, 4)},
+                    {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)}
                 };
                 result.push_back(article);
             }
@@ -160,11 +174,11 @@ json Database::getArticlesByCategory(const std::string& category) {
         sqlite3_bind_text(stmt, 1, category.c_str(), -1, SQLITE_STATIC);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             json article = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                {"source", (const char*)sqlite3_column_text(stmt, 4)}
+                {"id",          sqlite3_column_int(stmt, 0)},
+                {"title",       safeText(stmt, 1)},
+                {"description", safeText(stmt, 2)},
+                {"url",         safeText(stmt, 3)},
+                {"source",      safeText(stmt, 4)}
             };
             result.push_back(article);
         }
@@ -187,12 +201,12 @@ json Database::getArticleById(int id) {
         sqlite3_bind_int(stmt, 1, id);
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             article = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                {"id",          sqlite3_column_int(stmt, 0)},
+                {"title",       safeText(stmt, 1)},
+                {"description", safeText(stmt, 2)},
+                {"url",         safeText(stmt, 3)},
+                {"source",      safeText(stmt, 4)},
+                {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)}
             };
         }
     }
@@ -233,12 +247,12 @@ json Database::getSavedArticlesForUser(int userId) {
         sqlite3_bind_int(stmt, 1, userId);
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             json article = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"title", (const char*)sqlite3_column_text(stmt, 1)},
-                {"description", (const char*)sqlite3_column_text(stmt, 2)},
-                {"url", (const char*)sqlite3_column_text(stmt, 3)},
-                {"source", (const char*)sqlite3_column_text(stmt, 4)},
-                {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY}
+                {"id",          sqlite3_column_int(stmt, 0)},
+                {"title",       safeText(stmt, 1)},
+                {"description", safeText(stmt, 2)},
+                {"url",         safeText(stmt, 3)},
+                {"source",      safeText(stmt, 4)},
+                {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)}
             };
             result.push_back(article);
         }
@@ -261,7 +275,6 @@ void Database::deleteSavedArticle(int userId, int articleId) {
         if (sqlite3_step(stmt) != SQLITE_DONE) {
             std::cerr << Strings::DB_DELETE_SAVED_ARTICLE_FAIL;
         }
-        std::cerr << Strings::DB_DELETE_SAVED_ARTICLE_SUCCESS;
     }
     finalize(stmt);
 }
@@ -381,14 +394,14 @@ json Database::searchArticles(const std::string &keyword, const std::string &sta
     while (sqlite3_step(stmt) == SQLITE_ROW)
     {
         json article = {
-            {"id", sqlite3_column_int(stmt, 0)},
-            {"title", (const char*)sqlite3_column_text(stmt, 1)},
-            {"description", (const char*)sqlite3_column_text(stmt, 2)},
-            {"url", (const char*)sqlite3_column_text(stmt, 3)},
-            {"source", (const char*)sqlite3_column_text(stmt, 4)},
-            {"category", sqlite3_column_text(stmt, 5) ? (const char*)sqlite3_column_text(stmt, 5) : Strings::DB_DEFAULT_CATEGORY},
-            {"likes", sqlite3_column_int(stmt, 6)},
-            {"dislikes", sqlite3_column_int(stmt, 7)}
+            {"id",          sqlite3_column_int(stmt, 0)},
+            {"title",       safeText(stmt, 1)},
+            {"description", safeText(stmt, 2)},
+            {"url",         safeText(stmt, 3)},
+            {"source",      safeText(stmt, 4)},
+            {"category",    safeText(stmt, 5, Strings::DB_DEFAULT_CATEGORY)},
+            {"likes",       sqlite3_column_int(stmt, 6)},
+            {"dislikes",    sqlite3_column_int(stmt, 7)}
         };
         result.push_back(article);
     }
@@ -508,8 +521,8 @@ json Database::getUserNotificationPreferences(int userId) {
         sqlite3_bind_int(stmt1, 1, userId);
         while (sqlite3_step(stmt1) == SQLITE_ROW) {
             result["categories"].push_back({
-                {"category", (const char*)sqlite3_column_text(stmt1, 0)},
-                {"enabled", sqlite3_column_int(stmt1, 1) == 1}
+                {"category", safeText(stmt1, 0)},
+                {"enabled",  sqlite3_column_int(stmt1, 1) == 1}
             });
         }
     }
@@ -525,7 +538,7 @@ json Database::getUserNotificationPreferences(int userId) {
         sqlite3_bind_int(stmt2, 1, userId);
         while (sqlite3_step(stmt2) == SQLITE_ROW) {
             result["keywords"].push_back({
-                {"keyword", (const char*)sqlite3_column_text(stmt2, 0)},
+                {"keyword", safeText(stmt2, 0)},
                 {"enabled", sqlite3_column_int(stmt2, 1) == 1}
             });
         }
@@ -550,7 +563,7 @@ void Database::addNotificationsForCategory(int userId, const std::string& catego
 
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             int articleId = sqlite3_column_int(stmt, 0);
-            std::string title = (const char*)sqlite3_column_text(stmt, 1);
+            std::string title = safeText(stmt, 1);
 
             sqlite3_stmt* insertStmt;
             const char* insertQuery = R"(
@@ -573,21 +586,31 @@ void Database::addNotificationsForCategory(int userId, const std::string& catego
 }
 
 void Database::filterNotificationsByKeyword(int userId, const std::string& keyword) {
-    // Delete existing notifications not matching keyword
-    const char* deleteQuery = R"(
-        DELETE FROM notifications
-        WHERE user_id = ? AND article_id NOT IN (
-            SELECT a.id
-            FROM news_article a
-            WHERE (a.title LIKE '%' || ? || '%' OR a.content LIKE '%' || ? || '%')
-        )
+    // Insert notifications for existing articles that match the keyword (if not already present).
+    // Previously deleted non-matching notifications, which was destructive and incorrect.
+    const char* insertQuery = R"(
+        INSERT INTO notifications (user_id, article_id, title, message, read)
+        SELECT ?, a.id, a.title, ?, 0
+        FROM news_article a
+        WHERE (a.title LIKE '%' || ? || '%'
+               OR a.description LIKE '%' || ? || '%'
+               OR a.content LIKE '%' || ? || '%')
+          AND a.is_hidden = 0
+          AND NOT EXISTS (
+              SELECT 1 FROM notifications n
+              WHERE n.user_id = ? AND n.article_id = a.id
+          )
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), deleteQuery, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, userId);
-        sqlite3_bind_text(stmt, 2, keyword.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), insertQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+        std::string msg = Strings::DB_NEW_ARTICLE_KEYWORD + keyword;
+        sqlite3_bind_int(stmt,  1, userId);
+        sqlite3_bind_text(stmt, 2, msg.c_str(),     -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 3, keyword.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 4, keyword.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 5, keyword.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt,  6, userId);
         sqlite3_step(stmt);
     }
     finalize(stmt);
@@ -778,12 +801,12 @@ json Database::getAllExternalServers() {
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             json server = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"server_name", (const char*)sqlite3_column_text(stmt, 1)},
-                {"api_url", (const char*)sqlite3_column_text(stmt, 2)},
-                {"api_key", (const char*)sqlite3_column_text(stmt, 3)},
-                {"status", (const char*)sqlite3_column_text(stmt, 4)},
-                {"last_accessed", (const char*)sqlite3_column_text(stmt, 5)}
+                {"id",           sqlite3_column_int(stmt, 0)},
+                {"server_name",  safeText(stmt, 1)},
+                {"api_url",      safeText(stmt, 2)},
+                {"api_key",      safeText(stmt, 3)},
+                {"status",       safeText(stmt, 4)},
+                {"last_accessed",safeText(stmt, 5)}
             };
             result.push_back(server);
         }
@@ -805,12 +828,12 @@ json Database::getExternalServerById(int serverId) {
         sqlite3_bind_int(stmt, 1, serverId);
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             server = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"server_name", (const char*)sqlite3_column_text(stmt, 1)},
-                {"api_url", (const char*)sqlite3_column_text(stmt, 2)},
-                {"api_key", (const char*)sqlite3_column_text(stmt, 3)},
-                {"status", (const char*)sqlite3_column_text(stmt, 4)},
-                {"last_accessed", (const char*)sqlite3_column_text(stmt, 5)}
+                {"id",           sqlite3_column_int(stmt, 0)},
+                {"server_name",  safeText(stmt, 1)},
+                {"api_url",      safeText(stmt, 2)},
+                {"api_key",      safeText(stmt, 3)},
+                {"status",       safeText(stmt, 4)},
+                {"last_accessed",safeText(stmt, 5)}
             };
         }
     }
@@ -891,11 +914,10 @@ std::string Database::getUserEmailById(int userId) {
     const char* query = R"(
         SELECT email FROM user WHERE id = ?
     )";
-    std::cout << "user id: " << userId << std::endl;
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(stmt, 1, userId);
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-            email = (const char*)sqlite3_column_text(stmt, 0);
+            email = safeText(stmt, 0);
         }
     }
     finalize(stmt);
@@ -912,13 +934,12 @@ bool Database::authenticateUser(const std::string& email, const std::string& pas
     )";
     bool success = false;
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, email.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, password.c_str(), -1, SQLITE_STATIC);
-        std::cout << Strings::DB_VALUE_OF_EMAIL << email << std::endl;
-        std::cout << Strings::DB_VALUE_OF_PASSWORD << password << std::endl;
-        if (sqlite3_step(stmt) == SQLITE_ROW){
+        std::string hashedPassword = PasswordHasher::hash(password);
+        sqlite3_bind_text(stmt, 1, email.c_str(),          -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, hashedPassword.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
             userId = sqlite3_column_int(stmt, 0);
-            role = (const char*)sqlite3_column_text(stmt, 1);
+            role   = safeText(stmt, 1);
             success = true;
         }
     }
@@ -934,9 +955,10 @@ bool Database::registerUser(const std::string& username, const std::string& emai
     )";
     bool success = false;
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, email.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, password.c_str(), -1, SQLITE_STATIC);
+        std::string hashedPassword = PasswordHasher::hash(password);
+        sqlite3_bind_text(stmt, 1, username.c_str(),       -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, email.c_str(),          -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, hashedPassword.c_str(), -1, SQLITE_TRANSIENT);
         if (sqlite3_step(stmt) == SQLITE_DONE) {
             success = true;
         } else {
@@ -952,9 +974,7 @@ void Database::createDefaultAdmin() {
 
     // Check if admin already exists
     sqlite3_stmt* stmt;
-    const char* checkQuery = R"(
-        SELECT id FROM user WHERE email = 'headmaster@news.com'
-    )";
+    const char* checkQuery = "SELECT id FROM user WHERE email = 'headmaster@news.com'";
     if (sqlite3_prepare_v2(db, checkQuery, -1, &stmt, nullptr) == SQLITE_OK) {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             std::cout << Strings::DB_DEFAULT_ADMIN_EXISTS;
@@ -964,20 +984,22 @@ void Database::createDefaultAdmin() {
     }
     sqlite3_finalize(stmt);
 
-    // Insert default admin
+    // Insert default admin with a hashed password
     const char* insertQuery = R"(
         INSERT INTO user (username, email, password, role_id)
-        VALUES ('Headmaster', 'headmaster@news.com', 'headmaster1223', 
+        VALUES ('Headmaster', 'headmaster@news.com', ?,
             (SELECT id FROM user_role WHERE type = 'admin'))
     )";
-    char* errMsg = nullptr;
-    int rc = sqlite3_exec(db, insertQuery, nullptr, nullptr, &errMsg);
-    if (rc != SQLITE_OK) {
-        std::cerr << Strings::DB_FAILED_CREATE_ADMIN << errMsg << "\n";
-        sqlite3_free(errMsg);
-    } else {
-        std::cout << Strings::DB_ADMIN_CREATED;
+    if (sqlite3_prepare_v2(db, insertQuery, -1, &stmt, nullptr) == SQLITE_OK) {
+        std::string hashedPassword = PasswordHasher::hash("headmaster1223");
+        sqlite3_bind_text(stmt, 1, hashedPassword.c_str(), -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(stmt) != SQLITE_DONE) {
+            std::cerr << Strings::DB_FAILED_CREATE_ADMIN << sqlite3_errmsg(db) << "\n";
+        } else {
+            std::cout << Strings::DB_ADMIN_CREATED;
+        }
     }
+    sqlite3_finalize(stmt);
 }
 
 void Database::storeArticle(const json& article) {
@@ -1032,7 +1054,7 @@ void Database::storeArticle(const json& article) {
         sqlite3_bind_text(insertStmt, 10, source.c_str(), -1, SQLITE_TRANSIENT);
 
         
-         std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
+        std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << "\n";
 
         if (sqlite3_step(insertStmt) != SQLITE_DONE) {
             std::string err = sqlite3_errmsg(db);
@@ -1049,7 +1071,6 @@ void Database::storeArticle(const json& article) {
         return;
     }
     sqlite3_finalize(insertStmt);
-    std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
     int articleId = sqlite3_last_insert_rowid(db);
 
     addCategory(category); 
@@ -1073,8 +1094,7 @@ void Database::storeArticle(const json& article) {
     std::cout << Strings::DB_NOTIFY_CALLED << category << "\n";
     notifyUsersIfMatched(title, content, category, articleId);
 
-     std::cout << Strings::DB_ARTICLE_INSERTED << article.value("title", "No Title") << " (at line " << __LINE__ << ")\n";
-
+    // Update last_accessed timestamp for external server (server id=1 as placeholder)
     sqlite3_stmt* updateStmt;
     const char* updateQuery = "UPDATE external_server SET last_accessed = CURRENT_TIMESTAMP WHERE id = ?";
     if (sqlite3_prepare_v2(db, updateQuery, -1, &updateStmt, nullptr) == SQLITE_OK) {
@@ -1202,11 +1222,11 @@ nlohmann::json Database::getReportedArticles() {
     if (sqlite3_prepare_v2(DBManager::getInstance().getDB(), query, -1, &stmt, nullptr) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             nlohmann::json article = {
-                {"id", sqlite3_column_int(stmt, 0)},
-                {"title", (const char*)sqlite3_column_text(stmt, 1)},
+                {"id",           sqlite3_column_int(stmt, 0)},
+                {"title",        safeText(stmt, 1)},
                 {"report_count", sqlite3_column_int(stmt, 2)},
-                {"is_hidden", sqlite3_column_int(stmt, 3)},
-                {"num_reports", sqlite3_column_int(stmt, 4)}
+                {"is_hidden",    sqlite3_column_int(stmt, 3)},
+                {"num_reports",  sqlite3_column_int(stmt, 4)}
             };
             result.push_back(article);
         }

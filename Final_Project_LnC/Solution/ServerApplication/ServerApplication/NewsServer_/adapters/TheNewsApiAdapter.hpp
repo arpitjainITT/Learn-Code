@@ -6,6 +6,8 @@
 
 class TheNewsApiAdapter : public INewsApiAdapter {
 public:
+    explicit TheNewsApiAdapter(std::string apiKey)
+        : INewsApiAdapter(std::move(apiKey)) {}
     nlohmann::json fetchArticles() override;
     std::string getSourceName() const override { return Strings::ADAPTER_THENEWSAPI_SOURCE_NAME; }
 };

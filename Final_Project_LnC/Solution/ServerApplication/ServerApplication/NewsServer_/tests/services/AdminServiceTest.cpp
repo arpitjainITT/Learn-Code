@@ -1,204 +1,186 @@
+/**
+ * AdminServiceTest.cpp
+ *
+ * Tests AdminService (server-side) through the real Database layer
+ * using an in-memory SQLite database.
+ *
+ * AdminService methods are thin wrappers around Database:: calls that
+ * manage external servers, categories, and content moderation.
+ */
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include "../../services/AdminService.hpp"
-#include "../../database/Database.hpp"
+#include "../../database/DBManager.hpp"
+#include "../../database/DataBase.hpp"
 #include <nlohmann/json.hpp>
+#include <string>
 
-// Mock for Database class to avoid real database operations
-class MockDatabase {
-public:
-    static testing::NiceMock<MockDatabase>& getInstance() {
-        static testing::NiceMock<MockDatabase> instance;
-        return instance;
-    }
+using json = nlohmann::json;
 
-    MOCK_METHOD(nlohmann::json, getAllExternalServers, ());
-    MOCK_METHOD(nlohmann::json, getExternalServerById, (int));
-    MOCK_METHOD(void, updateExternalServerApiKey, (int, const std::string&));
-    MOCK_METHOD(void, updateExternalServerStatus, (int, const std::string&));
-    MOCK_METHOD(void, updateExternalServerStatusByName, (const std::string&, const std::string&));
-    MOCK_METHOD(void, addCategory, (const std::string&));
-};
-
-// Test fixture for AdminService
 class AdminServiceTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Set up mock behavior before each test
+    static void SetUpTestSuite() {
+        ASSERT_TRUE(DBManager::getInstance().initializeDB(":memory:"))
+            << "Failed to open in-memory SQLite database for AdminServiceTest";
     }
-
-    void TearDown() override {
-        // Clean up after each test
-    }
-
-    // Helper to create sample server data
-    nlohmann::json createSampleServers() {
-        nlohmann::json servers = nlohmann::json::array();
-        
-        servers.push_back({
-            {"id", 1},
-            {"server_name", "News API"},
-            {"api_url", "https://newsapi.org/v2/"},
-            {"api_key", "sample-key-1234"},
-            {"status", "active"},
-            {"last_accessed", "2023-07-07 12:00:00"}
-        });
-        
-        servers.push_back({
-            {"id", 2},
-            {"server_name", "The Guardian API"},
-            {"api_url", "https://content.guardianapis.com/"},
-            {"api_key", "guardian-api-key"},
-            {"status", "inactive"},
-            {"last_accessed", "2023-07-06 10:30:00"}
-        });
-        
-        return servers;
-    }
-
-    // Helper to create a sample server
-    nlohmann::json createSampleServer() {
-        return {
-            {"id", 1},
-            {"server_name", "News API"},
-            {"api_url", "https://newsapi.org/v2/"},
-            {"api_key", "sample-key-1234"},
-            {"status", "active"},
-            {"last_accessed", "2023-07-07 12:00:00"}
-        };
+    static void TearDownTestSuite() {
+        DBManager::getInstance().close();
     }
 };
 
-// Test listing all external servers
-TEST_F(AdminServiceTest, ListExternalServers) {
-    // Set up expectations
-    auto sampleServers = createSampleServers();
-    EXPECT_CALL(MockDatabase::getInstance(), getAllExternalServers())
-        .WillOnce(testing::Return(sampleServers));
+// ─────────────────────────────────────────────────────────
+// listExternalServers
+// ─────────────────────────────────────────────────────────
 
-    // Call method under test
-    auto result = AdminService::listExternalServers();
-
-    // Verify results
-    ASSERT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0]["id"], 1);
-    EXPECT_EQ(result[0]["server_name"], "News API");
-    EXPECT_EQ(result[1]["id"], 2);
-    EXPECT_EQ(result[1]["server_name"], "The Guardian API");
+TEST_F(AdminServiceTest, ListServers_ReturnsJsonArray) {
+    auto servers = AdminService::listExternalServers();
+    EXPECT_TRUE(servers.is_array())
+        << "listExternalServers() must always return a JSON array";
 }
 
-// Test viewing a specific external server's details
-TEST_F(AdminServiceTest, ViewExternalServerDetails) {
-    // Set up expectations
-    auto sampleServer = createSampleServer();
-    EXPECT_CALL(MockDatabase::getInstance(), getExternalServerById(1))
-        .WillOnce(testing::Return(sampleServer));
-
-    // Call method under test
-    auto result = AdminService::viewExternalServerDetails(1);
-
-    // Verify results
-    EXPECT_EQ(result["id"], 1);
-    EXPECT_EQ(result["server_name"], "News API");
-    EXPECT_EQ(result["api_key"], "sample-key-1234");
-    EXPECT_EQ(result["status"], "active");
+TEST_F(AdminServiceTest, ListServers_ContainsSeededServers) {
+    auto servers = AdminService::listExternalServers();
+    // DBManager::executeSchema() seeds TheNewsAPI and NewsAPI.org
+    EXPECT_GE(servers.size(), 2u) << "At least 2 seeded servers expected";
 }
 
-// Test updating an external server's API key
-TEST_F(AdminServiceTest, UpdateExternalServerApiKey) {
-    // Set up expectations
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerApiKey(1, "new-api-key"))
-        .Times(1);
-
-    // Call method under test
-    bool result = AdminService::updateExternalServerApiKey(1, "new-api-key");
-
-    // Verify results
-    EXPECT_TRUE(result);
+TEST_F(AdminServiceTest, ListServers_EachEntryHasRequiredFields) {
+    auto servers = AdminService::listExternalServers();
+    for (const auto& s : servers) {
+        EXPECT_TRUE(s.contains("id"))          << "Server entry must have 'id'";
+        EXPECT_TRUE(s.contains("server_name")) << "Server entry must have 'server_name'";
+        EXPECT_TRUE(s.contains("api_key"))     << "Server entry must have 'api_key'";
+        EXPECT_TRUE(s.contains("status"))      << "Server entry must have 'status'";
+    }
 }
 
-// Test updating an external server's status
-TEST_F(AdminServiceTest, UpdateExternalServerStatus) {
-    // Set up expectations
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerStatus(1, "inactive"))
-        .Times(1);
+// ─────────────────────────────────────────────────────────
+// viewExternalServerDetails
+// ─────────────────────────────────────────────────────────
 
-    // Call method under test
-    bool result = AdminService::updateExternalServerStatus(1, "inactive");
+TEST_F(AdminServiceTest, ViewServerDetails_ValidId_ReturnsNonEmpty) {
+    auto servers = AdminService::listExternalServers();
+    ASSERT_FALSE(servers.empty());
+    int firstId = servers[0]["id"].get<int>();
 
-    // Verify results
-    EXPECT_TRUE(result);
+    auto details = AdminService::viewExternalServerDetails(firstId);
+    EXPECT_FALSE(details.empty()) << "Fetching details for an existing server must return data";
+    EXPECT_EQ(details["id"], firstId);
 }
 
-// Test updating a server's status by name
-TEST_F(AdminServiceTest, UpdateExternalServerStatusByName) {
-    // Set up expectations
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerStatusByName("News API", "maintenance"))
-        .Times(1);
-
-    // Call method under test
-    bool result = AdminService::updateExternalServerStatus("News API", "maintenance");
-
-    // Verify results
-    EXPECT_TRUE(result);
+TEST_F(AdminServiceTest, ViewServerDetails_InvalidId_ReturnsEmpty) {
+    auto details = AdminService::viewExternalServerDetails(999999);
+    EXPECT_TRUE(details.empty()) << "Fetching details for a non-existent id must return empty";
 }
 
-// Test adding a new category
-TEST_F(AdminServiceTest, AddCategory) {
-    // Set up expectations
-    EXPECT_CALL(MockDatabase::getInstance(), addCategory("Technology"))
-        .Times(1);
+// ─────────────────────────────────────────────────────────
+// updateExternalServerApiKey
+// ─────────────────────────────────────────────────────────
 
-    // Call method under test
-    bool result = AdminService::addCategory("Technology");
+TEST_F(AdminServiceTest, UpdateApiKey_ExistingServer_Succeeds) {
+    auto servers = AdminService::listExternalServers();
+    ASSERT_FALSE(servers.empty());
+    int firstId = servers[0]["id"].get<int>();
 
-    // Verify results
-    EXPECT_TRUE(result);
+    bool ok = AdminService::updateExternalServerApiKey(firstId, "new-api-key-xyz");
+    EXPECT_TRUE(ok);
+
+    // Verify the key was actually updated
+    auto details = AdminService::viewExternalServerDetails(firstId);
+    EXPECT_EQ(details["api_key"], "new-api-key-xyz");
 }
 
-// Test error handling when database operations fail
-TEST_F(AdminServiceTest, ErrorHandling) {
-    // Set up expectations for exception
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerApiKey(1, "new-key"))
-        .WillOnce(testing::Throw(std::runtime_error("Database error")));
+// ─────────────────────────────────────────────────────────
+// addCategory
+// ─────────────────────────────────────────────────────────
 
-    // Call method under test
-    bool result = AdminService::updateExternalServerApiKey(1, "new-key");
-
-    // Verify results - should return false due to exception
-    EXPECT_FALSE(result);
+TEST_F(AdminServiceTest, AddCategory_NewCategory_Succeeds) {
+    bool ok = AdminService::addCategory("SportsAdminTest");
+    EXPECT_TRUE(ok);
 }
 
-// Test with invalid inputs
-TEST_F(AdminServiceTest, InvalidInputs) {
-    // Empty API key
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerApiKey(1, ""))
-        .Times(1);
-    bool result1 = AdminService::updateExternalServerApiKey(1, "");
-    EXPECT_TRUE(result1); // The service doesn't validate inputs, just passes to DB
-    
-    // Empty status
-    EXPECT_CALL(MockDatabase::getInstance(), updateExternalServerStatus(1, ""))
-        .Times(1);
-    bool result2 = AdminService::updateExternalServerStatus(1, "");
-    EXPECT_TRUE(result2);
-    
-    // Empty category
-    EXPECT_CALL(MockDatabase::getInstance(), addCategory(""))
-        .Times(1);
-    bool result3 = AdminService::addCategory("");
-    EXPECT_TRUE(result3);
+TEST_F(AdminServiceTest, AddCategory_DuplicateCategory_DoesNotCrash) {
+    AdminService::addCategory("DupCategory");
+    // Second insert should be silently ignored (INSERT OR IGNORE)
+    EXPECT_NO_THROW(AdminService::addCategory("DupCategory"));
 }
 
-// Test with non-existent server ID
-TEST_F(AdminServiceTest, NonExistentServer) {
-    // Set up expectations - return empty JSON
-    EXPECT_CALL(MockDatabase::getInstance(), getExternalServerById(999))
-        .WillOnce(testing::Return(nlohmann::json()));
+// ─────────────────────────────────────────────────────────
+// hideCategory / unhideCategory / getHiddenCategories
+// ─────────────────────────────────────────────────────────
 
-    // Call method under test
-    auto result = AdminService::viewExternalServerDetails(999);
+TEST_F(AdminServiceTest, GetHiddenCategories_Initially_Empty) {
+    auto hidden = AdminService::getHiddenCategories();
+    EXPECT_TRUE(hidden.is_array());
+    // No categories have been hidden yet in this suite
+    EXPECT_TRUE(hidden.empty()) << "No hidden categories expected at suite start";
+}
 
-    // Verify results - should return empty JSON
-    EXPECT_TRUE(result.empty());
+TEST_F(AdminServiceTest, HideCategory_ThenGetHidden_ShowsIt) {
+    AdminService::addCategory("Financials");
+    AdminService::hideCategory("Financials");
+
+    auto hidden = AdminService::getHiddenCategories();
+    bool found = false;
+    for (const auto& c : hidden) {
+        if (c.get<std::string>() == "Financials") { found = true; break; }
+    }
+    EXPECT_TRUE(found) << "Hidden category must appear in getHiddenCategories()";
+}
+
+TEST_F(AdminServiceTest, UnhideCategory_AfterHide_RemovedFromList) {
+    AdminService::addCategory("TempCat");
+    AdminService::hideCategory("TempCat");
+    AdminService::unhideCategory("TempCat");
+
+    auto hidden = AdminService::getHiddenCategories();
+    bool found = false;
+    for (const auto& c : hidden) {
+        if (c.get<std::string>() == "TempCat") { found = true; break; }
+    }
+    EXPECT_FALSE(found) << "Unhidden category must no longer appear in hidden list";
+}
+
+// ─────────────────────────────────────────────────────────
+// addFilteredKeyword / removeFilteredKeyword / getFilteredKeywords
+// ─────────────────────────────────────────────────────────
+
+TEST_F(AdminServiceTest, GetFilteredKeywords_Initially_Empty) {
+    auto keywords = AdminService::getFilteredKeywords();
+    EXPECT_TRUE(keywords.is_array());
+    EXPECT_TRUE(keywords.empty()) << "No filtered keywords expected at suite start";
+}
+
+TEST_F(AdminServiceTest, AddFilteredKeyword_ThenGet_ShowsKeyword) {
+    AdminService::addFilteredKeyword("spam");
+
+    auto keywords = AdminService::getFilteredKeywords();
+    bool found = false;
+    for (const auto& k : keywords) {
+        if (k.get<std::string>() == "spam") { found = true; break; }
+    }
+    EXPECT_TRUE(found) << "Added keyword must appear in getFilteredKeywords()";
+}
+
+TEST_F(AdminServiceTest, RemoveFilteredKeyword_AfterAdd_RemovedFromList) {
+    AdminService::addFilteredKeyword("junk");
+    AdminService::removeFilteredKeyword("junk");
+
+    auto keywords = AdminService::getFilteredKeywords();
+    bool found = false;
+    for (const auto& k : keywords) {
+        if (k.get<std::string>() == "junk") { found = true; break; }
+    }
+    EXPECT_FALSE(found) << "Removed keyword must no longer appear in list";
+}
+
+TEST_F(AdminServiceTest, FilteredKeyword_DuplicateAdd_StoredOnce) {
+    AdminService::addFilteredKeyword("duplicate_kw");
+    AdminService::addFilteredKeyword("duplicate_kw");  // INSERT OR IGNORE
+
+    auto keywords = AdminService::getFilteredKeywords();
+    int count = 0;
+    for (const auto& k : keywords) {
+        if (k.get<std::string>() == "duplicate_kw") ++count;
+    }
+    EXPECT_EQ(count, 1) << "Duplicate keyword must be stored only once";
 }

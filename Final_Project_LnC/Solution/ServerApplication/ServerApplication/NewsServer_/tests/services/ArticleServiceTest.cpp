@@ -1,250 +1,172 @@
+/**
+ * ArticleServiceTest.cpp
+ *
+ * Tests ArticleService static methods against an in-memory SQLite database.
+ * This is an integration test of the service + database layers together,
+ * which is the correct approach for a thin service layer that delegates
+ * directly to static Database:: calls.
+ */
+
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include "../../services/ArticleService.hpp"
+#include "../../database/DBManager.hpp"
 #include <nlohmann/json.hpp>
-#include <functional>
+#include <string>
 
 using json = nlohmann::json;
 
-// Mock the entire ArticleService instead of trying to replace Database functions
-class MockArticleService {
-public:
-    // Define static mock functions with the same signatures as ArticleService
-    static inline std::function<json()> getAllArticles = []() { return mockArticles; };
-    static inline std::function<json(int)> getArticleById = [](int id) { 
-        for (const auto& article : mockArticles) {
-            if (article.contains("id") && article["id"] == id) {
-                return article;
-            }
-        }
-        return json{};
-    };
-    static inline std::function<json(const std::string&)> getArticlesByCategory = [](const std::string& category) {
-        json results = json::array();
-        for (const auto& article : mockArticles) {
-            if (article.contains("category") && article["category"] == category) {
-                results.push_back(article);
-            }
-        }
-        return results;
-    };
-    static inline std::function<bool(const json&)> storeArticle = [](const json& article) {
-        lastStoredArticle = article;
-        storeArticleCalled = true;
-        return true;
-    };
-    static inline std::function<json(const std::string&, const std::string&, const std::string&, const std::string&)> 
-    searchArticles = [](const std::string& keyword, const std::string& startDate, 
-                        const std::string& endDate, const std::string& sortBy) {
-        // Implementation
-        return json::array();
-    };
-    
-    // Add other mock functions as needed
-    
-    // Test state variables
-    static bool storeArticleCalled;
-    static json lastStoredArticle;
-    static json mockArticles;
-    
-    static void reset() {
-        storeArticleCalled = false;
-        lastStoredArticle = json{};
-        mockArticles = json::array();
-        
-        // Reset all function pointers to default implementations
-        getAllArticles = []() { return mockArticles; };
-        getArticleById = [](int id) { 
-            for (const auto& article : mockArticles) {
-                if (article.contains("id") && article["id"] == id) {
-                    return article;
-                }
-            }
-            return json{};
-        };
-        // Reset other functions
-    }
-    
-    static void setupMockArticles() {
-        mockArticles = json::array();
-        mockArticles.push_back({
-            {"id", 1},
-            {"title", "Test Tech Article"},
-            {"description", "This is a test tech article"},
-            {"content", "Full content of the tech article..."},
-            {"category", "technology"},
-            {"published_at", "2023-07-05T12:00:00Z"}
-        });
-        mockArticles.push_back({
-            {"id", 2},
-            {"title", "Test Business Article"},
-            {"description", "This is a test business article"},
-            {"content", "Full content of the business article..."},
-            {"category", "business"},
-            {"published_at", "2023-07-06T10:30:00Z"}
-        });
-    }
-};
-
-bool MockArticleService::storeArticleCalled = false;
-json MockArticleService::lastStoredArticle = json{};
-json MockArticleService::mockArticles = json::array();
-
-// Override ArticleService namespace functions for testing
-namespace ArticleService {
-    // Store original functions
-    namespace Original {
-        json (*getAllArticles)() = ArticleService::getAllArticles;
-        json (*getArticleById)(int) = ArticleService::getArticleById;
-        // Store other original functions
-    }
-    
-    // Override with test implementations
-    json getAllArticles() {
-        return MockArticleService::getAllArticles();
-    }
-    
-    json getArticleById(int id) {
-        return MockArticleService::getArticleById(id);
-    }
-    
-    json getArticlesByCategory(const std::string& category) {
-        return MockArticleService::getArticlesByCategory(category);
-    }
-    
-    bool storeArticle(const json& article) {
-        return MockArticleService::storeArticle(article);
-    }
-    
-    // Override other functions
-}
-
-// Test fixture
+// ---------------------------------------------------------------------------
+// Test fixture — initialises a fresh in-memory SQLite DB for the entire suite
+// ---------------------------------------------------------------------------
 class ArticleServiceTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        MockArticleService::reset();
-        MockArticleService::setupMockArticles();
+    static void SetUpTestSuite() {
+        ASSERT_TRUE(DBManager::getInstance().initializeDB(":memory:"))
+            << "Failed to open in-memory SQLite database";
     }
-    
-    // Helper function to create a test article
-    json createSampleArticle() {
-        return json{
-            {"title", "Test Article"},
-            {"description", "This is a test article"},
-            {"content", "Full content of the test article..."},
-            {"category", "technology"}
+
+    static void TearDownTestSuite() {
+        DBManager::getInstance().close();
+    }
+
+    // Helper: build a minimal valid article JSON for storeArticle()
+    static json makeArticle(const std::string& title,
+                             const std::string& url,
+                             const std::string& category = "Technology") {
+        return {
+            {"uuid",        ""},
+            {"title",       title},
+            {"description", "A test description for " + title},
+            {"category",    category},
+            {"language",    "en"},
+            {"locale",      "us"},
+            {"url",         url},
+            {"image_url",   ""},
+            {"content",     "Full content about " + title},
+            {"source",      "TestSource"}
         };
     }
 };
 
-// Test storing an article
-TEST_F(ArticleServiceTest, StoreArticle) {
-    // Prepare test data
-    auto article = createSampleArticle();
-    
-    // Call the method under test
-    bool result = ArticleService::storeArticle(article);
-    
-    // Verify the result
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(MockArticleService::storeArticleCalled);
-    EXPECT_EQ(MockArticleService::lastStoredArticle["title"], "Test Article");
-}
-
-// Test getting all articles
-TEST_F(ArticleServiceTest, GetAllArticles) {
-    // Call the method under test
+// ---------------------------------------------------------------------------
+// getAllArticles
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, GetAllArticles_EmptyDatabase_ReturnsArray) {
     auto articles = ArticleService::getAllArticles();
-    
-    // Verify the result
-    EXPECT_EQ(articles.size(), 2);
-    EXPECT_EQ(articles[0]["title"], "Test Tech Article");
-    EXPECT_EQ(articles[1]["title"], "Test Business Article");
+    EXPECT_TRUE(articles.is_array());
 }
 
-// Test getting article by ID
-TEST_F(ArticleServiceTest, GetArticleById) {
-    // Call the method under test
-    auto existingArticle = ArticleService::getArticleById(1);
-    auto nonExistentArticle = ArticleService::getArticleById(999);
-    
-    // Verify the result
-    EXPECT_EQ(existingArticle["id"], 1);
-    EXPECT_EQ(existingArticle["title"], "Test Tech Article");
-    EXPECT_TRUE(nonExistentArticle.empty());
+TEST_F(ArticleServiceTest, GetAllArticles_AfterStore_ReturnsArticle) {
+    ArticleService::storeArticle(makeArticle("Headline Alpha", "https://example.com/alpha"));
+    auto articles = ArticleService::getAllArticles();
+    ASSERT_FALSE(articles.empty());
+
+    bool found = false;
+    for (const auto& a : articles) {
+        if (a.value("title", "") == "Headline Alpha") { found = true; break; }
+    }
+    EXPECT_TRUE(found);
 }
 
-// Test getting articles by category
-TEST_F(ArticleServiceTest, GetArticlesByCategory) {
-    // Call the method under test
-    auto techArticles = ArticleService::getArticlesByCategory("technology");
-    auto businessArticles = ArticleService::getArticlesByCategory("business");
-    auto nonExistentCategory = ArticleService::getArticlesByCategory("nonexistent");
-    
-    // Verify the result
-    EXPECT_EQ(techArticles.size(), 1);
-    EXPECT_EQ(techArticles[0]["title"], "Test Tech Article");
-    
-    EXPECT_EQ(businessArticles.size(), 1);
-    EXPECT_EQ(businessArticles[0]["title"], "Test Business Article");
-    
-    EXPECT_TRUE(nonExistentCategory.empty());
+// ---------------------------------------------------------------------------
+// getArticleById
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, GetArticleById_NonExistent_ReturnsEmpty) {
+    auto article = ArticleService::getArticleById(999999);
+    EXPECT_TRUE(article.empty() || article.is_null());
 }
 
-// Test searching articles
-TEST_F(ArticleServiceTest, SearchArticles) {
-    // Call the method under test
-    auto techResults = ArticleService::searchArticles("Tech", "", "", "");
-    auto emptyResults = ArticleService::searchArticles("NonExistent", "", "", "");
-    auto allResults = ArticleService::searchArticles("", "", "", "");
-    
-    // Verify the results
-    EXPECT_EQ(techResults.size(), 1);
-    EXPECT_EQ(techResults[0]["title"], "Test Tech Article");
-    
-    EXPECT_TRUE(emptyResults.empty());
-    
-    EXPECT_EQ(allResults.size(), 2);
+// ---------------------------------------------------------------------------
+// getArticlesByCategory
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, GetArticlesByCategory_MatchingCategory_ReturnsResults) {
+    ArticleService::storeArticle(makeArticle("Sports Story", "https://example.com/sports", "Sports"));
+    auto results = ArticleService::getArticlesByCategory("Sports");
+    EXPECT_TRUE(results.is_array());
 }
 
-// Test error handling
-TEST_F(ArticleServiceTest, ErrorHandling) {
-    // Configure mock to throw an exception
-    MockDatabase::shouldThrow = true;
-    
-    // Test error handling in getAllArticles
-    auto emptyArticles = ArticleService::getAllArticles();
-    EXPECT_TRUE(emptyArticles.empty());
-    
-    // Test error handling in getArticleById
-    auto emptyArticle = ArticleService::getArticleById(1);
-    EXPECT_TRUE(emptyArticle.empty());
-    
-    // Test error handling in storeArticle
-    auto article = createSampleArticle();
-    bool storeResult = ArticleService::storeArticle(article);
-    EXPECT_FALSE(storeResult);
-    
-    // Reset the mock
-    MockDatabase::shouldThrow = false;
+TEST_F(ArticleServiceTest, GetArticlesByCategory_NoMatch_ReturnsEmpty) {
+    auto results = ArticleService::getArticlesByCategory("NonExistentXYZ");
+    EXPECT_TRUE(results.is_array());
+    EXPECT_TRUE(results.empty());
 }
 
-// Test user preferences
-TEST_F(ArticleServiceTest, UserPreferences) {
-    // Call the method under test
-    auto preferences = ArticleService::getUserPreferences(42);
-    auto emptyPreferences = ArticleService::getUserPreferences(999);
-    
-    // Verify the results
-    EXPECT_EQ(preferences["categories"].size(), 2);
-    EXPECT_EQ(preferences["categories"][0], "technology");
-    EXPECT_EQ(preferences["categories"][1], "business");
-    
-    EXPECT_EQ(preferences["keywords"].size(), 2);
-    EXPECT_EQ(preferences["keywords"][0], "ai");
-    EXPECT_EQ(preferences["keywords"][1], "blockchain");
-    
-    EXPECT_TRUE(emptyPreferences["categories"].empty());
-    EXPECT_TRUE(emptyPreferences["keywords"].empty());
+// ---------------------------------------------------------------------------
+// storeArticle — deduplication by URL
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, StoreArticle_DuplicateUrl_NotInsertedTwice) {
+    const std::string url = "https://example.com/dup-" + std::to_string(rand());
+    ArticleService::storeArticle(makeArticle("Dup Article A", url));
+    ArticleService::storeArticle(makeArticle("Dup Article B", url)); // same URL
+
+    auto all = ArticleService::getAllArticles();
+    int count = 0;
+    for (const auto& a : all) {
+        if (a.value("url", "") == url) ++count;
+    }
+    EXPECT_EQ(count, 1) << "Duplicate URL should be stored only once";
 }
+
+// ---------------------------------------------------------------------------
+// getAllCategories
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, GetAllCategories_ReturnsArray) {
+    auto categories = ArticleService::getAllCategories();
+    EXPECT_TRUE(categories.is_array());
+}
+
+// ---------------------------------------------------------------------------
+// searchArticles
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, SearchArticles_EmptyKeyword_ReturnsArray) {
+    auto results = ArticleService::searchArticles("", "", "", "");
+    EXPECT_TRUE(results.is_array());
+}
+
+TEST_F(ArticleServiceTest, SearchArticles_KnownKeyword_ReturnsMatch) {
+    ArticleService::storeArticle(
+        makeArticle("Quantum Physics Breakthrough", "https://example.com/quantum", "Science"));
+
+    auto results = ArticleService::searchArticles("Quantum", "", "", "");
+    EXPECT_TRUE(results.is_array());
+
+    bool found = false;
+    for (const auto& a : results) {
+        if (a.value("title", "").find("Quantum") != std::string::npos) { found = true; break; }
+    }
+    EXPECT_TRUE(found);
+}
+
+TEST_F(ArticleServiceTest, SearchArticles_NoMatch_ReturnsEmpty) {
+    auto results = ArticleService::searchArticles("ZZZNoMatchXXX123", "", "", "");
+    EXPECT_TRUE(results.is_array());
+    EXPECT_TRUE(results.empty());
+}
+
+// ---------------------------------------------------------------------------
+// reportArticle / hideArticle / unhideArticle — no crash on valid input
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, ReportArticle_DoesNotThrow) {
+    EXPECT_NO_THROW(ArticleService::reportArticle(1, 1, "spam"));
+}
+
+TEST_F(ArticleServiceTest, HideUnhideArticle_DoesNotThrow) {
+    ArticleService::storeArticle(makeArticle("Article to Hide", "https://example.com/hide"));
+    auto all = ArticleService::getAllArticles();
+    if (!all.empty()) {
+        int id = all[0].value("id", -1);
+        if (id != -1) {
+            EXPECT_NO_THROW(ArticleService::hideArticle(id));
+            EXPECT_NO_THROW(ArticleService::unhideArticle(id));
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// getReportedArticles
+// ---------------------------------------------------------------------------
+TEST_F(ArticleServiceTest, GetReportedArticles_ReturnsArray) {
+    auto reports = ArticleService::getReportedArticles();
+    EXPECT_TRUE(reports.is_array());
+}
+

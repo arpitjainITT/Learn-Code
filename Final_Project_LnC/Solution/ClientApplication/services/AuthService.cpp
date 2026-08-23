@@ -9,7 +9,7 @@ using json = nlohmann::json;
 
 bool AuthService::login(const std::string& email, const std::string& password, User& user) {
     json requestBody = {
-        {"email", email},
+        {"email",    email},
         {"password", password}
     };
 
@@ -20,10 +20,17 @@ bool AuthService::login(const std::string& email, const std::string& password, U
         if (response["status"] == "success") {
             user.setId(response["user_id"]);
             user.setRole(response["role"]);
-            user.setEmail(email); // email is known already from input
-            
+            user.setEmail(email);
+
+            // Store JWT and inject into every subsequent request
+            std::string token = response.value("token", "");
+            user.setToken(token);
+            if (!token.empty()) {
+                HttpClient::setAuthToken(token);
+            }
+
             return true;
-        }        
+        }
     } catch (...) {
         std::cerr << Strings::AUTH_SERVICE_LOGIN_FAIL << responseStr << "\n";
     }
@@ -40,8 +47,13 @@ bool AuthService::signup(const std::string& username, const std::string& email, 
 
     std::string responseStr = HttpClient::post(API::SIGNUP, requestBody.dump());
     try {
-        std::cout << Strings::AUTH_SERVICE_SIGNUP_SUCCESS << std::endl;
-        return true;
+        auto response = json::parse(responseStr);
+        // Server returns {"status": "user registered"} on success
+        if (response.contains("status") && response["status"] == "user registered") {
+            std::cout << Strings::AUTH_SERVICE_SIGNUP_SUCCESS << std::endl;
+            return true;
+        }
+        return false;
     } catch (...) {
         return false;
     }
